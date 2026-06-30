@@ -15,7 +15,7 @@
     "db:push": "npm run push --workspace=@outpitch/db"
   },
   "devDependencies": {
-    "turbo": "^2.5.4",
+    "turbo": "2.9.0",
     "typescript": "^5.8.3"
   },
   "engines": {
