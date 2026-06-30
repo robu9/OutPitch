@@ -1,0 +1,33 @@
+{
+  "name": "@outpitch/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@composio/core": "^0.1.55",
+    "@google/generative-ai": "^0.24.1",
+    "@outpitch/db": "*",
+    "@outpitch/types": "*",
+    "bullmq": "^5.56.0",
+    "cheerio": "^1.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "robots-parser": "^3.0.1",
+    "svix": "^1.68.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.32",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
