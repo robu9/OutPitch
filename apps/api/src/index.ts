@@ -5,6 +5,7 @@ import helmet from "helmet";
 import { config } from "./config.js";
 import { errorHandler } from "./middleware/error.js";
 import { startPipelineWorker } from "./jobs/company-pipeline.js";
+import { initCognee } from "./services/cognee.js";
 
 import healthRoutes from "./routes/health.js";
 import authRoutes from "./routes/auth.js";
@@ -51,6 +52,10 @@ app.use("/api/outreach", outreachRoutes);
 app.use(errorHandler);
 
 startPipelineWorker();
+
+initCognee().catch((err) => {
+  console.error("Cognee init failed — memory features disabled:", err);
+});
 
 app.listen(config.port, () => {
   console.log(`Outpitch API running on http://localhost:${config.port}`);

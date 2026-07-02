@@ -6,18 +6,63 @@ import {
 import { config } from "../config.js";
 import { prisma } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
+import {
+  remember,
+  recall,
+  improve,
+  forget,
+  userDataset,
+  recallUserAndCompany,
+} from "../services/cognee.js";
 import { sendEmail, fetchEmails } from "../services/composio.js";
+import { buildLinkedInProfileSummary } from "../services/linkedin-profile.js";
 import { enqueueCompanyPipeline, getPipelineStatus } from "../jobs/company-pipeline.js";
 
 const SYSTEM_PROMPT = `You are Outpitch, an AI job search assistant. You help users find companies, discover founder and recruiter contacts, draft personalized outreach emails, and track their job search progress.
 
+You have function tools (searchCompanies, recallContext, rememberFact, draftEmail, sendEmail, etc.) and receive the user's LinkedIn profile from their connected Composio account on every message.
+
 Guidelines:
-- Use the user's profile and chat history for context
+- Use the profile context provided to you; never claim you lack access to the user's LinkedIn data when it is present in context
+- LinkedIn profile data comes from the user's OAuth connection via Composio (LINKEDIN_GET_MY_INFO + LINKEDIN_GET_PERSON)
+- Use recallContext when you need additional memory beyond the profile snapshot
 - Be proactive about suggesting companies and contacts
 - Draft concise, personalized cold emails (under 150 words)
 - Never send emails without explicit user confirmation
 - Give actionable career advice based on the user's profile and outreach history
-- When user gives feedback on companies, acknowledge it for future reference`;
+- When user gives feedback on companies, use improveMemory to refine future matches`;
+
+function buildProfileContext(
+  user: { name: string | null; linkedinConnected: boolean } | null,
+  profile: {
+    headline?: string | null;
+    summary?: string | null;
+    targetRole?: string | null;
+    targetLocation?: string | null;
+    targetIndustries?: string[];
+    skills?: string[];
+    linkedinData?: unknown;
+  } | null | undefined
+): string {
+  if (!user && !profile) return "";
+
+  const parts: string[] = [];
+  if (user?.name) parts.push(`Name: ${user.name}`);
+  if (user?.linkedinConnected) parts.push("LinkedIn: connected");
+  if (profile?.headline) parts.push(`Headline: ${profile.headline}`);
+  if (profile?.targetRole) parts.push(`Target role: ${profile.targetRole}`);
+  if (profile?.targetLocation) parts.push(`Target location: ${profile.targetLocation}`);
+  if (profile?.targetIndustries?.length) {
+    parts.push(`Target industries: ${profile.targetIndustries.join(", ")}`);
+  }
+  if (profile?.skills?.length) parts.push(`Skills: ${profile.skills.join(", ")}`);
+  if (profile?.summary) parts.push(`Summary: ${profile.summary}`);
+  if (profile?.linkedinData) {
+    parts.push(`LinkedIn profile: ${buildLinkedInProfileSummary(profile.linkedinData as Record<string, unknown>)}`);
+  }
+
+  return parts.length > 0 ? `[User profile: ${parts.join(" | ")}]\n\n` : "";
+}
 
 const tools: FunctionDeclaration[] = [
   {
@@ -75,6 +120,51 @@ const tools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "rememberFact",
+    description: "Store an important fact about the user in memory",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        fact: { type: SchemaType.STRING },
+      },
+      required: ["fact"],
+    },
+  },
+  {
+    name: "recallContext",
+    description: "Recall relevant context from memory",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        query: { type: SchemaType.STRING },
+        companyId: { type: SchemaType.STRING },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "improveMemory",
+    description: "Improve memory based on user feedback",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        feedback: { type: SchemaType.STRING },
+      },
+      required: ["feedback"],
+    },
+  },
+  {
+    name: "forgetTopic",
+    description: "Remove a topic from memory",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        topic: { type: SchemaType.STRING },
+      },
+      required: ["topic"],
+    },
+  },
+  {
     name: "getOutreachStatus",
     description: "Get status of sent outreach emails and replies",
     parameters: {
@@ -87,6 +177,7 @@ const tools: FunctionDeclaration[] = [
 export interface AgentContext {
   userId: string;
   clerkId: string;
+  cogneeToken?: string;
 }
 
 async function executeTool(
@@ -102,7 +193,12 @@ async function executeTool(
         industry: args.industry as string | undefined,
         limit: (args.limit as number) ?? 10,
       };
-      const job = await enqueueCompanyPipeline(ctx.userId, ctx.clerkId, params);
+      const job = await enqueueCompanyPipeline(
+        ctx.userId,
+        ctx.clerkId,
+        params,
+        ctx.cogneeToken
+      );
       return JSON.stringify({
         message: "Company search started",
         jobId: job.id,
@@ -116,7 +212,15 @@ async function executeTool(
         include: { contacts: true },
       });
       if (!company) return JSON.stringify({ error: "Company not found" });
-      return JSON.stringify({ company });
+
+      const memory = await recallUserAndCompany(
+        ctx.clerkId,
+        company.id,
+        `What do we know about ${company.name}?`,
+        ctx.cogneeToken
+      );
+
+      return JSON.stringify({ company, memory });
     }
 
     case "draftEmail": {
@@ -153,8 +257,45 @@ async function executeTool(
         },
       });
 
+      await remember(
+        `Sent email to ${args.to}: "${args.subject}"`,
+        { dataset: userDataset(ctx.clerkId), token: ctx.cogneeToken }
+      );
+
       return JSON.stringify({ success: true, campaignId: campaign.id, result });
     }
+
+    case "rememberFact":
+      await remember(args.fact as string, {
+        dataset: userDataset(ctx.clerkId),
+        token: ctx.cogneeToken,
+      });
+      return JSON.stringify({ success: true });
+
+    case "recallContext": {
+      const results = await recallUserAndCompany(
+        ctx.clerkId,
+        args.companyId as string | undefined,
+        args.query as string,
+        ctx.cogneeToken
+      );
+      return JSON.stringify(results);
+    }
+
+    case "improveMemory":
+      await improve(args.feedback as string, {
+        dataset: userDataset(ctx.clerkId),
+        token: ctx.cogneeToken,
+      });
+      return JSON.stringify({ success: true });
+
+    case "forgetTopic":
+      await forget({
+        dataset: userDataset(ctx.clerkId),
+        query: args.topic as string,
+        token: ctx.cogneeToken,
+      });
+      return JSON.stringify({ success: true });
 
     case "getOutreachStatus": {
       const campaigns = await prisma.outreachCampaign.findMany({
@@ -170,26 +311,6 @@ async function executeTool(
     default:
       return JSON.stringify({ error: `Unknown tool: ${name}` });
   }
-}
-
-async function buildProfileContext(userId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { profile: true },
-  });
-  if (!user?.profile) return "";
-
-  const p = user.profile;
-  const parts = [
-    p.targetRole && `Target role: ${p.targetRole}`,
-    p.targetLocation && `Location: ${p.targetLocation}`,
-    p.headline && `Headline: ${p.headline}`,
-    p.summary && `Summary: ${p.summary}`,
-    p.skills.length > 0 && `Skills: ${p.skills.join(", ")}`,
-    p.targetIndustries.length > 0 && `Industries: ${p.targetIndustries.join(", ")}`,
-  ].filter(Boolean);
-
-  return parts.length > 0 ? `[User profile: ${parts.join("; ")}]\n\n` : "";
 }
 
 export async function* runAgent(
@@ -209,7 +330,22 @@ export async function* runAgent(
     tools: [{ functionDeclarations: tools }],
   });
 
-  const contextPrefix = await buildProfileContext(ctx.userId);
+  const dbUser = await prisma.user.findUnique({
+    where: { id: ctx.userId },
+    include: { profile: true },
+  });
+
+  const userContext = await recall(
+    "user profile preferences job search goals",
+    { datasets: [userDataset(ctx.clerkId)], token: ctx.cogneeToken, topK: 5 }
+  );
+
+  const profilePrefix = buildProfileContext(dbUser, dbUser?.profile);
+  const memoryPrefix =
+    userContext.length > 0
+      ? `[Memory context: ${userContext.map((r) => r.content).join("; ")}]\n\n`
+      : "";
+  const contextPrefix = profilePrefix + memoryPrefix;
 
   const chat = model.startChat({
     history: history.map((h) => ({
@@ -248,6 +384,11 @@ export async function* runAgent(
 
   const text = response.text();
   if (text) yield text;
+
+  await remember(`User said: ${message}\nAssistant: ${text}`, {
+    dataset: userDataset(ctx.clerkId),
+    token: ctx.cogneeToken,
+  });
 }
 
 export { getPipelineStatus };

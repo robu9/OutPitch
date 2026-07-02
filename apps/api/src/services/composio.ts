@@ -1,6 +1,10 @@
 import { Composio } from "@composio/core";
 import { config } from "../config.js";
 import { AppError } from "../middleware/error.js";
+import {
+  extractPersonId,
+  normalizeLinkedInProfileFields,
+} from "./linkedin-profile.js";
 
 let composioClient: Composio | null = null;
 
@@ -56,6 +60,21 @@ async function getOrCreateAuthConfigId(toolkit: string): Promise<string> {
   const created = await composio.authConfigs.create(toolkit, {
     type: "use_composio_managed_auth",
     name: `${toolkit} (Outpitch)`,
+    ...(toolkit === "linkedin"
+      ? {
+          credentials: {
+            scopes: [
+              "openid",
+              "profile",
+              "email",
+              "w_member_social",
+              "r_profile_basicinfo",
+              "r_primary_current_experience",
+              "r_most_recent_education",
+            ],
+          },
+        }
+      : {}),
   });
 
   return created.id;
@@ -67,7 +86,7 @@ async function getToolkitAuthUrl(userId: string, toolkit: string): Promise<strin
   try {
     const authConfigId = await getOrCreateAuthConfigId(toolkit);
     const connectionRequest = await composio.connectedAccounts.link(userId, authConfigId, {
-      callbackUrl: `${config.appUrl}/settings`,
+      callbackUrl: `${config.appUrl}/settings?connect=${toolkit}`,
     });
     const url = connectionRequest.redirectUrl ?? "";
     if (!url) {
@@ -92,19 +111,59 @@ export async function getGmailAuthUrl(userId: string): Promise<string> {
   return getToolkitAuthUrl(userId, "gmail");
 }
 
-export async function getLinkedInProfile(userId: string) {
+async function executeLinkedInTool(
+  userId: string,
+  slug: string,
+  args: Record<string, unknown> = {}
+) {
   const composio = getComposio();
+  const result = await composio.tools.execute(slug, {
+    userId,
+    arguments: args,
+    dangerouslySkipVersionCheck: true,
+  });
+  return (result.data ?? {}) as Record<string, unknown>;
+}
+
+export async function getLinkedInProfile(userId: string) {
   try {
-    const result = await composio.tools.execute("LINKEDIN_GET_MY_INFO", {
-      userId,
-      arguments: {},
-      dangerouslySkipVersionCheck: true,
-    });
-    return result.data as Record<string, unknown>;
+    const myInfo = await executeLinkedInTool(userId, "LINKEDIN_GET_MY_INFO");
+    const profile: Record<string, unknown> = { myInfo, ...myInfo };
+
+    const personId = extractPersonId(myInfo);
+    if (personId) {
+      try {
+        const personProfile = await executeLinkedInTool(userId, "LINKEDIN_GET_PERSON", {
+          person_id: personId,
+        });
+        profile.personProfile = personProfile;
+        Object.assign(profile, personProfile);
+      } catch (error) {
+        console.warn("LinkedIn person profile fetch failed:", error);
+      }
+    }
+
+    profile.syncedAt = new Date().toISOString();
+    return profile;
   } catch (error) {
     console.warn("LinkedIn profile fetch failed:", error);
     return null;
   }
+}
+
+export async function getLinkedInProfileWithRetry(
+  userId: string,
+  attempts = 4,
+  delayMs = 1500
+) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const profile = await getLinkedInProfile(userId);
+    if (profile) return profile;
+    if (attempt < attempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return null;
 }
 
 export async function sendEmail(

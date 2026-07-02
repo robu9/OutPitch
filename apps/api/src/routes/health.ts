@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "@outpitch/db";
 import { asyncHandler } from "../middleware/error.js";
 import { createRedisClient } from "../lib/redis.js";
+import { getCogneeBackend, isCogneeReady } from "../services/cognee.js";
 
 const router = Router();
 
@@ -40,7 +41,10 @@ router.get(
     const healthy = Object.values(checks).every((v) => v === "ok");
     res.status(healthy ? 200 : 503).json({
       status: healthy ? "healthy" : "degraded",
-      checks,
+      checks: {
+        ...checks,
+        cognee: isCogneeReady() ? getCogneeBackend() : "disabled",
+      },
       timestamp: new Date().toISOString(),
     });
   })

@@ -7,6 +7,8 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL!,
   redisUrl: (process.env.REDIS_URL ?? "").replace(/^["']|["']$/g, ""),
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+  cogneeApiUrl: process.env.COGNEE_API_URL ?? "https://api.cognee.ai",
+  cogneeServiceToken: process.env.COGNEE_SERVICE_TOKEN ?? process.env.COGNEE_API_KEY ?? "",
   composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
   serpApiKey: process.env.SERPAPI_KEY ?? "",
   apolloApiKey: process.env.APOLLO_API_KEY ?? "",

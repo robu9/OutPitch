@@ -49,23 +49,6 @@ export default function OnboardingPage() {
     }
   }
 
-  async function syncLinkedIn() {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await apiFetch("/api/onboarding/linkedin-sync", {
-        method: "POST",
-        clerkUserId: user.id,
-      });
-      setLinkedinConnected(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sync LinkedIn profile");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function connectGmail() {
     if (!user) return;
     setError(null);
@@ -81,14 +64,6 @@ export default function OnboardingPage() {
       window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to connect Gmail");
-    }
-  }
-
-  async function handleLinkedIn() {
-    if (linkedinConnected) {
-      await syncLinkedIn();
-    } else {
-      await connectLinkedIn();
     }
   }
 
@@ -132,12 +107,12 @@ export default function OnboardingPage() {
 
         <div className="flex gap-3 mb-8">
           <button
-            onClick={handleLinkedIn}
+            onClick={connectLinkedIn}
             disabled={loading}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors"
           >
             <Linkedin className="w-4 h-4" />
-            {linkedinConnected ? "Sync LinkedIn" : "Connect LinkedIn"}
+            {linkedinConnected ? "LinkedIn connected" : "Connect LinkedIn"}
           </button>
           <button
             onClick={connectGmail}

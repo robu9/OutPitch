@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { AppShell } from "@/components/app-shell";
 import { apiFetch } from "@/lib/api";
@@ -9,11 +10,16 @@ import { Mail, Linkedin, Loader2 } from "lucide-react";
 type ConnectionStatus = {
   linkedinConnected: boolean;
   gmailConnected: boolean;
+  linkedinProfileSynced?: boolean;
+  linkedinSyncing?: boolean;
   onboardingDone: boolean;
 };
 
 export default function SettingsPage() {
   const { user } = useUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const oauthHandled = useRef(false);
   const [status, setStatus] = useState<ConnectionStatus>({
     linkedinConnected: false,
     gmailConnected: false,
@@ -22,19 +28,61 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshStatus = useCallback(async () => {
-    if (!user) return;
+  const loadStatus = useCallback(async () => {
+    if (!user) return null;
     const next = await apiFetch<ConnectionStatus>("/api/onboarding/status", {
       clerkUserId: user.id,
     });
     setStatus(next);
+    return next;
   }, [user]);
 
+  const syncLinkedIn = useCallback(async () => {
+    if (!user) return;
+    setLoading("linkedin-sync");
+    setError(null);
+    try {
+      await apiFetch("/api/onboarding/linkedin-sync", {
+        method: "POST",
+        clerkUserId: user.id,
+      });
+      await loadStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sync LinkedIn profile");
+    } finally {
+      setLoading(null);
+    }
+  }, [user, loadStatus]);
+
   useEffect(() => {
-    refreshStatus().catch((err) => {
+    loadStatus().catch((err) => {
       setError(err instanceof Error ? err.message : "Failed to load connection status");
     });
-  }, [refreshStatus]);
+  }, [loadStatus]);
+
+  useEffect(() => {
+    if (!user || oauthHandled.current) return;
+
+    const connect = searchParams.get("connect");
+    const oauthStatus = searchParams.get("status");
+    if (connect !== "linkedin") return;
+
+    oauthHandled.current = true;
+
+    if (oauthStatus === "success") {
+      syncLinkedIn()
+        .finally(() => router.replace("/settings"))
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Failed to sync LinkedIn profile");
+        });
+      return;
+    }
+
+    if (oauthStatus === "failed") {
+      router.replace("/settings");
+      setError("LinkedIn connection was cancelled or failed. Please try again.");
+    }
+  }, [user, searchParams, router, syncLinkedIn]);
 
   async function connectLinkedIn() {
     if (!user) return;
@@ -66,7 +114,7 @@ export default function SettingsPage() {
         method: "POST",
         clerkUserId: user.id,
       });
-      await refreshStatus();
+      await loadStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disconnect LinkedIn");
     } finally {
@@ -104,13 +152,15 @@ export default function SettingsPage() {
         method: "POST",
         clerkUserId: user.id,
       });
-      await refreshStatus();
+      await loadStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disconnect Gmail");
     } finally {
       setLoading(null);
     }
   }
+
+  const linkedinSyncing = loading === "linkedin-sync" || status.linkedinSyncing;
 
   return (
     <AppShell>
@@ -133,21 +183,39 @@ export default function SettingsPage() {
               <div>
                 <p className="font-medium">LinkedIn</p>
                 <p className="text-sm text-muted-foreground">
-                  Profile data for job matching
+                  {linkedinSyncing
+                    ? "Syncing your profile…"
+                    : status.linkedinConnected
+                      ? status.linkedinProfileSynced
+                        ? "Connected — profile synced"
+                        : "Connected — sync your profile"
+                      : "Profile data for job matching"}
                 </p>
               </div>
             </div>
             {status.linkedinConnected ? (
-              <button
-                onClick={disconnectLinkedIn}
-                disabled={loading !== null}
-                className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {loading === "linkedin-disconnect" && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                Disconnect
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={syncLinkedIn}
+                  disabled={loading !== null}
+                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-accent disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {loading === "linkedin-sync" && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  {loading === "linkedin-sync" ? "Syncing…" : "Sync now"}
+                </button>
+                <button
+                  onClick={disconnectLinkedIn}
+                  disabled={loading !== null}
+                  className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {loading === "linkedin-disconnect" && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  Disconnect
+                </button>
+              </div>
             ) : (
               <button
                 onClick={connectLinkedIn}
