@@ -9,7 +9,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@composio/core": "^0.1.55",
+    "@composio/core": "^0.13.1",
     "@google/generative-ai": "^0.24.1",
     "@outpitch/db": "*",
     "@outpitch/types": "*",
@@ -19,6 +19,7 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "ioredis": "^5.11.1",
     "robots-parser": "^3.0.1",
     "svix": "^1.68.0",
     "zod": "^3.25.67"

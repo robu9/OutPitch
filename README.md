@@ -1,18 +1,20 @@
 # Outpitch
 
-AI-powered job outreach platform. Find companies hiring for your role, discover founder and recruiter contacts, and send personalized emails — powered by persistent memory (Cognee), Gemini, and Composio integrations.
+AI-powered job outreach platform. Find companies hiring for your role, discover founder and recruiter contacts, and send personalized emails — powered by Gemini and Composio integrations.
 
 ## Architecture
 
 - **Frontend**: Next.js 16 (App Router) + Clerk auth + Tailwind
 - **Backend**: Node.js/TypeScript Express API
-- **Memory**: Self-hosted Cognee (remember / recall / improve / forget)
+- **Database**: Neon Postgres (via Prisma)
+- **Queue**: BullMQ with hosted Redis
 - **Integrations**: Composio (LinkedIn + Gmail), SerpAPI, Apollo.io, Google Gemini
 
 ## Prerequisites
 
 - Node.js 20+
-- Docker & Docker Compose
+- Neon Postgres database
+- Hosted Redis instance (e.g. Upstash)
 - API keys: Clerk, Gemini, Composio, SerpAPI, Apollo (optional for fallback)
 
 ## Quick Start
@@ -22,34 +24,26 @@ AI-powered job outreach platform. Find companies hiring for your role, discover 
 ```bash
 cd OutCast
 cp .env.example .env
-# Fill in your API keys in .env
+# Fill in your API keys and connection URLs in .env
 
 npm install
 ```
 
-### 2. Start infrastructure
-
-```bash
-docker compose -f docker/docker-compose.yml up -d
-```
-
-This starts Postgres (5432), Redis (6379), and Cognee (8000).
-
-### 3. Database setup
+### 2. Database setup
 
 ```bash
 npm run db:generate
 npm run db:push
 ```
 
-### 4. Build shared packages
+### 3. Build shared packages
 
 ```bash
 npm run build --workspace=@outpitch/types
 npm run build --workspace=@outpitch/db
 ```
 
-### 5. Run development servers
+### 4. Run development servers
 
 ```bash
 npm run dev
@@ -66,13 +60,11 @@ npm run dev
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk frontend key |
 | `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret |
 | `GEMINI_API_KEY` | Google Gemini API key |
-| `COGNEE_API_URL` | Cognee API URL (default: http://localhost:8000) |
-| `COGNEE_SERVICE_TOKEN` | Cognee service auth token |
 | `COMPOSIO_API_KEY` | Composio API key |
 | `SERPAPI_KEY` | SerpAPI key for company search |
 | `APOLLO_API_KEY` | Apollo.io key for email fallback |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
+| `DATABASE_URL` | Neon Postgres connection string |
+| `REDIS_URL` | Hosted Redis connection string |
 
 ## User Flow
 
@@ -100,18 +92,8 @@ npm run dev
 
 1. **SerpAPI** searches for companies hiring the target role
 2. **Website crawler** extracts company context and emails from /about, /team, /careers
-3. **Cognee** stores company knowledge in shared `company_{id}` datasets
-4. **Apollo.io** enriches contacts when crawl finds no email (fallback)
-5. Results linked to user via `UserCompanyLink` with match scores
-
-## Memory (Cognee)
-
-Each user gets a `user_{clerkId}` dataset. Companies get shared `company_{id}` datasets. The Gemini agent uses all four Cognee verbs:
-
-- **remember** — ingest profiles, crawl data, chat facts
-- **recall** — retrieve context before recommendations
-- **improve** — refine matching from user feedback
-- **forget** — remove outdated topics
+3. **Apollo.io** enriches contacts when crawl finds no email (fallback)
+4. Results linked to user via `UserCompanyLink` with match scores
 
 ## Clerk Setup
 
@@ -128,7 +110,7 @@ Each user gets a `user_{clerkId}` dataset. Companies get shared `company_{id}` d
 
 ## Integration Test Flow
 
-1. Start docker compose and dev servers
+1. Set `DATABASE_URL` and `REDIS_URL` in `.env`, then run dev servers
 2. Sign in with LinkedIn at http://localhost:3000
 3. Complete onboarding with a target role
 4. In chat, say: "Find frontend engineer roles at AI startups"
@@ -146,7 +128,5 @@ OutCast/
 ├── packages/
 │   ├── types/        # Shared Zod schemas
 │   └── db/           # Prisma schema + client
-├── docker/
-│   └── docker-compose.yml
 └── README.md
 ```

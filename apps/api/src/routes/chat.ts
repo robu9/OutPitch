@@ -44,8 +44,6 @@ router.post(
       take: 50,
     });
 
-    const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
-
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
@@ -60,7 +58,6 @@ router.post(
       for await (const chunk of runAgent(message, agentHistory, {
         userId: req.auth!.userId,
         clerkId: req.auth!.clerkId,
-        cogneeToken: user?.cogneeToken ?? undefined,
       })) {
         fullResponse += chunk;
         res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);

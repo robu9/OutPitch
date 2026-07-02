@@ -102,13 +102,6 @@ export const SendEmailPayloadSchema = z.object({
 });
 export type SendEmailPayload = z.infer<typeof SendEmailPayloadSchema>;
 
-export const CogneeRecallResultSchema = z.object({
-  content: z.string(),
-  score: z.number().optional(),
-  metadata: z.record(z.unknown()).optional(),
-});
-export type CogneeRecallResult = z.infer<typeof CogneeRecallResultSchema>;
-
 export const PipelineProgressSchema = z.object({
   jobId: z.string(),
   status: PipelineJobStatusSchema,

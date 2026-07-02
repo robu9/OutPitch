@@ -8,8 +8,8 @@ import {
   getGmailAuthUrl,
   getLinkedInAuthUrl,
   checkConnectionStatus,
+  disconnectToolkit,
 } from "../services/composio.js";
-import { ingestUserProfile } from "../services/cognee.js";
 
 const router = Router();
 
@@ -52,6 +52,41 @@ router.get(
 );
 
 router.post(
+  "/disconnect/linkedin",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await disconnectToolkit(req.auth!.clerkId, "linkedin");
+
+    await prisma.user.update({
+      where: { id: req.auth!.userId },
+      data: { linkedinConnected: false },
+    });
+
+    await prisma.userProfile.updateMany({
+      where: { userId: req.auth!.userId },
+      data: { linkedinData: undefined },
+    });
+
+    res.json({ success: true, linkedinConnected: false });
+  })
+);
+
+router.post(
+  "/disconnect/gmail",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await disconnectToolkit(req.auth!.clerkId, "gmail");
+
+    await prisma.user.update({
+      where: { id: req.auth!.userId },
+      data: { gmailConnected: false },
+    });
+
+    res.json({ success: true, gmailConnected: false });
+  })
+);
+
+router.post(
   "/linkedin-sync",
   requireAuth,
   asyncHandler(async (req, res) => {
@@ -59,8 +94,6 @@ router.post(
     if (!profile) {
       throw new AppError(400, "LinkedIn not connected", "LINKEDIN_NOT_CONNECTED");
     }
-
-    const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
 
     await prisma.userProfile.upsert({
       where: { userId: req.auth!.userId },
@@ -81,8 +114,6 @@ router.post(
       where: { id: req.auth!.userId },
       data: { linkedinConnected: true },
     });
-
-    await ingestUserProfile(req.auth!.clerkId, profile, user?.cogneeToken ?? undefined);
 
     res.json({ success: true, profile });
   })
@@ -113,13 +144,6 @@ router.post(
         linkedinConnected: connections.linkedin,
       },
     });
-
-    const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
-    await ingestUserProfile(
-      req.auth!.clerkId,
-      payload as Record<string, unknown>,
-      user?.cogneeToken ?? undefined
-    );
 
     res.json({ success: true });
   })

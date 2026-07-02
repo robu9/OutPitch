@@ -4,7 +4,6 @@ import { prisma } from "@outpitch/db";
 import { asyncHandler, AppError } from "../middleware/error.js";
 import { requireAuth } from "../middleware/auth.js";
 import { sendEmail, fetchEmails } from "../services/composio.js";
-import { remember, userDataset } from "../services/cognee.js";
 
 const router = Router();
 
@@ -59,11 +58,6 @@ router.post(
         });
       }
     }
-
-    await remember(
-      `Sent outreach email to ${payload.to}: "${payload.subject}"`,
-      { dataset: userDataset(req.auth!.clerkId), token: user?.cogneeToken ?? undefined }
-    );
 
     res.json({ success: true, result, campaignId: campaign?.id });
   })

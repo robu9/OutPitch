@@ -6,28 +6,18 @@ import {
 import { config } from "../config.js";
 import { prisma } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
-import {
-  remember,
-  recall,
-  improve,
-  forget,
-  userDataset,
-  recallUserAndCompany,
-} from "../services/cognee.js";
 import { sendEmail, fetchEmails } from "../services/composio.js";
 import { enqueueCompanyPipeline, getPipelineStatus } from "../jobs/company-pipeline.js";
 
 const SYSTEM_PROMPT = `You are Outpitch, an AI job search assistant. You help users find companies, discover founder and recruiter contacts, draft personalized outreach emails, and track their job search progress.
 
-You have access to a persistent memory system (remember, recall, improve, forget) that stores user preferences and company knowledge.
-
 Guidelines:
-- Always recall user context before making recommendations
+- Use the user's profile and chat history for context
 - Be proactive about suggesting companies and contacts
 - Draft concise, personalized cold emails (under 150 words)
 - Never send emails without explicit user confirmation
 - Give actionable career advice based on the user's profile and outreach history
-- When user gives feedback on companies, use improve to refine future matches`;
+- When user gives feedback on companies, acknowledge it for future reference`;
 
 const tools: FunctionDeclaration[] = [
   {
@@ -85,51 +75,6 @@ const tools: FunctionDeclaration[] = [
     },
   },
   {
-    name: "rememberFact",
-    description: "Store an important fact about the user in memory",
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        fact: { type: SchemaType.STRING },
-      },
-      required: ["fact"],
-    },
-  },
-  {
-    name: "recallContext",
-    description: "Recall relevant context from memory",
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        query: { type: SchemaType.STRING },
-        companyId: { type: SchemaType.STRING },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "improveMemory",
-    description: "Improve memory based on user feedback",
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        feedback: { type: SchemaType.STRING },
-      },
-      required: ["feedback"],
-    },
-  },
-  {
-    name: "forgetTopic",
-    description: "Remove a topic from memory",
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        topic: { type: SchemaType.STRING },
-      },
-      required: ["topic"],
-    },
-  },
-  {
     name: "getOutreachStatus",
     description: "Get status of sent outreach emails and replies",
     parameters: {
@@ -142,7 +87,6 @@ const tools: FunctionDeclaration[] = [
 export interface AgentContext {
   userId: string;
   clerkId: string;
-  cogneeToken?: string;
 }
 
 async function executeTool(
@@ -158,12 +102,7 @@ async function executeTool(
         industry: args.industry as string | undefined,
         limit: (args.limit as number) ?? 10,
       };
-      const job = await enqueueCompanyPipeline(
-        ctx.userId,
-        ctx.clerkId,
-        params,
-        ctx.cogneeToken
-      );
+      const job = await enqueueCompanyPipeline(ctx.userId, ctx.clerkId, params);
       return JSON.stringify({
         message: "Company search started",
         jobId: job.id,
@@ -177,15 +116,7 @@ async function executeTool(
         include: { contacts: true },
       });
       if (!company) return JSON.stringify({ error: "Company not found" });
-
-      const memory = await recallUserAndCompany(
-        ctx.clerkId,
-        company.id,
-        `What do we know about ${company.name}?`,
-        ctx.cogneeToken
-      );
-
-      return JSON.stringify({ company, memory });
+      return JSON.stringify({ company });
     }
 
     case "draftEmail": {
@@ -222,45 +153,8 @@ async function executeTool(
         },
       });
 
-      await remember(
-        `Sent email to ${args.to}: "${args.subject}"`,
-        { dataset: userDataset(ctx.clerkId), token: ctx.cogneeToken }
-      );
-
       return JSON.stringify({ success: true, campaignId: campaign.id, result });
     }
-
-    case "rememberFact":
-      await remember(args.fact as string, {
-        dataset: userDataset(ctx.clerkId),
-        token: ctx.cogneeToken,
-      });
-      return JSON.stringify({ success: true });
-
-    case "recallContext": {
-      const results = await recallUserAndCompany(
-        ctx.clerkId,
-        args.companyId as string | undefined,
-        args.query as string,
-        ctx.cogneeToken
-      );
-      return JSON.stringify(results);
-    }
-
-    case "improveMemory":
-      await improve(args.feedback as string, {
-        dataset: userDataset(ctx.clerkId),
-        token: ctx.cogneeToken,
-      });
-      return JSON.stringify({ success: true });
-
-    case "forgetTopic":
-      await forget({
-        dataset: userDataset(ctx.clerkId),
-        query: args.topic as string,
-        token: ctx.cogneeToken,
-      });
-      return JSON.stringify({ success: true });
 
     case "getOutreachStatus": {
       const campaigns = await prisma.outreachCampaign.findMany({
@@ -278,6 +172,26 @@ async function executeTool(
   }
 }
 
+async function buildProfileContext(userId: string): Promise<string> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { profile: true },
+  });
+  if (!user?.profile) return "";
+
+  const p = user.profile;
+  const parts = [
+    p.targetRole && `Target role: ${p.targetRole}`,
+    p.targetLocation && `Location: ${p.targetLocation}`,
+    p.headline && `Headline: ${p.headline}`,
+    p.summary && `Summary: ${p.summary}`,
+    p.skills.length > 0 && `Skills: ${p.skills.join(", ")}`,
+    p.targetIndustries.length > 0 && `Industries: ${p.targetIndustries.join(", ")}`,
+  ].filter(Boolean);
+
+  return parts.length > 0 ? `[User profile: ${parts.join("; ")}]\n\n` : "";
+}
+
 export async function* runAgent(
   message: string,
   history: Array<{ role: string; content: string }>,
@@ -290,19 +204,12 @@ export async function* runAgent(
 
   const genAI = new GoogleGenerativeAI(config.geminiApiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     systemInstruction: SYSTEM_PROMPT,
     tools: [{ functionDeclarations: tools }],
   });
 
-  const userContext = await recall(
-    "user profile preferences job search goals",
-    { datasets: [userDataset(ctx.clerkId)], token: ctx.cogneeToken, topK: 5 }
-  );
-
-  const contextPrefix = userContext.length > 0
-    ? `[Memory context: ${userContext.map((r) => r.content).join("; ")}]\n\n`
-    : "";
+  const contextPrefix = await buildProfileContext(ctx.userId);
 
   const chat = model.startChat({
     history: history.map((h) => ({
@@ -341,11 +248,6 @@ export async function* runAgent(
 
   const text = response.text();
   if (text) yield text;
-
-  await remember(`User said: ${message}\nAssistant: ${text}`, {
-    dataset: userDataset(ctx.clerkId),
-    token: ctx.cogneeToken,
-  });
 }
 
 export { getPipelineStatus };

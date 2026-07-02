@@ -74,8 +74,8 @@ export default function HomePage() {
             },
             {
               icon: Brain,
-              title: "Persistent Memory",
-              desc: "Cognee remembers your preferences, outreach history, and company knowledge.",
+              title: "Smart Context",
+              desc: "Uses your profile, chat history, and company data to personalize recommendations.",
             },
           ].map(({ icon: Icon, title, desc }) => (
             <div

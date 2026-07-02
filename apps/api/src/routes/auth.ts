@@ -1,10 +1,8 @@
 import { Router } from "express";
 import { Webhook } from "svix";
-import { prisma } from "@outpitch/db";
 import { config } from "../config.js";
 import { asyncHandler } from "../middleware/error.js";
 import { getOrCreateUser } from "../middleware/auth.js";
-import { provisionCogneeUser, ingestUserProfile } from "../services/cognee.js";
 
 const router = Router();
 
@@ -29,18 +27,7 @@ router.post(
       const email = (data.email_addresses as Array<{ email_address: string }>)?.[0]?.email_address;
       const name = [data.first_name, data.last_name].filter(Boolean).join(" ") || undefined;
 
-      const user = await getOrCreateUser(clerkId, { email, name });
-
-      if (!user.cogneeToken) {
-        const cogneeUser = await provisionCogneeUser(clerkId, email);
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            cogneeToken: cogneeUser.token,
-            cogneeUserId: cogneeUser.id,
-          },
-        });
-      }
+      await getOrCreateUser(clerkId, { email, name });
     }
 
     res.status(200).json({ received: true });

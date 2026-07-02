@@ -1,13 +1,12 @@
-import "dotenv/config";
+import "./load-env.js";
 
 export const config = {
   port: parseInt(process.env.API_PORT ?? "4000", 10),
   nodeEnv: process.env.NODE_ENV ?? "development",
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   databaseUrl: process.env.DATABASE_URL!,
-  redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
+  redisUrl: (process.env.REDIS_URL ?? "").replace(/^["']|["']$/g, ""),
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
-  cogneeApiUrl: process.env.COGNEE_API_URL ?? "http://localhost:8000",
-  cogneeServiceToken: process.env.COGNEE_SERVICE_TOKEN ?? "",
   composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
   serpApiKey: process.env.SERPAPI_KEY ?? "",
   apolloApiKey: process.env.APOLLO_API_KEY ?? "",
@@ -16,11 +15,15 @@ export const config = {
 };
 
 function validateConfig() {
-  const required = ["DATABASE_URL"] as const;
+  const required = ["DATABASE_URL", "REDIS_URL"] as const;
   for (const key of required) {
     if (!process.env[key]) {
       console.warn(`Warning: ${key} is not set`);
     }
+  }
+
+  if (!config.composioApiKey) {
+    console.warn("Warning: COMPOSIO_API_KEY is not set — LinkedIn/Gmail connect will fail");
   }
 }
 

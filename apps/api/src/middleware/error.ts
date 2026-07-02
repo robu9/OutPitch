@@ -21,6 +21,16 @@ export function errorHandler(
     res.status(err.statusCode).json({ error: err.message, code: err.code });
     return;
   }
+
+  const message = err.message ?? "";
+  if (message.includes("Can't reach database server")) {
+    res.status(503).json({
+      error: "Database unavailable. Check your DATABASE_URL (Neon) connection.",
+      code: "DATABASE_UNAVAILABLE",
+    });
+    return;
+  }
+
   console.error("Unhandled error:", err);
   res.status(500).json({ error: "Internal server error" });
 }

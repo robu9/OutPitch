@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { apiFetch } from "@/lib/api";
@@ -10,6 +10,8 @@ export default function OnboardingPage() {
   const { user } = useUser();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [form, setForm] = useState({
     targetRole: "",
     targetLocation: "",
@@ -17,27 +19,76 @@ export default function OnboardingPage() {
     summary: "",
   });
 
-  async function connectGmail() {
+  useEffect(() => {
     if (!user) return;
-    const { url } = await apiFetch<{ url: string }>(
-      "/api/onboarding/connect/gmail",
-      { clerkUserId: user.id }
-    );
-    if (url) window.location.href = url;
+    apiFetch<{ linkedinConnected: boolean }>("/api/onboarding/status", {
+      clerkUserId: user.id,
+    })
+      .then((status) => setLinkedinConnected(status.linkedinConnected))
+      .catch(() => {});
+  }, [user]);
+
+  async function connectLinkedIn() {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const { url } = await apiFetch<{ url: string }>(
+        "/api/onboarding/connect/linkedin",
+        { clerkUserId: user.id }
+      );
+      if (!url) {
+        setError("No OAuth URL returned. Check your Composio configuration.");
+        return;
+      }
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect LinkedIn");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function syncLinkedIn() {
     if (!user) return;
     setLoading(true);
+    setError(null);
     try {
       await apiFetch("/api/onboarding/linkedin-sync", {
         method: "POST",
         clerkUserId: user.id,
       });
-    } catch {
-      // LinkedIn may not be connected via Composio yet
+      setLinkedinConnected(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sync LinkedIn profile");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function connectGmail() {
+    if (!user) return;
+    setError(null);
+    try {
+      const { url } = await apiFetch<{ url: string }>(
+        "/api/onboarding/connect/gmail",
+        { clerkUserId: user.id }
+      );
+      if (!url) {
+        setError("No OAuth URL returned. Check your Composio configuration.");
+        return;
+      }
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect Gmail");
+    }
+  }
+
+  async function handleLinkedIn() {
+    if (linkedinConnected) {
+      await syncLinkedIn();
+    } else {
+      await connectLinkedIn();
     }
   }
 
@@ -73,14 +124,20 @@ export default function OnboardingPage() {
           Connect your accounts and tell us about your job search goals.
         </p>
 
+        {error && (
+          <div className="mb-6 p-4 border border-destructive/40 bg-destructive/10 text-destructive rounded-xl text-sm">
+            {error}
+          </div>
+        )}
+
         <div className="flex gap-3 mb-8">
           <button
-            onClick={syncLinkedIn}
+            onClick={handleLinkedIn}
             disabled={loading}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors"
           >
             <Linkedin className="w-4 h-4" />
-            Sync LinkedIn
+            {linkedinConnected ? "Sync LinkedIn" : "Connect LinkedIn"}
           </button>
           <button
             onClick={connectGmail}

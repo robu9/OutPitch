@@ -1,18 +1,12 @@
 import { Queue, Worker, type Job } from "bullmq";
 import { prisma, type CompanyContact } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
-import { config } from "../config.js";
 import { searchCompanies, searchPeopleAtCompany } from "../services/serp.js";
 import { crawlCompanyWebsite } from "../services/crawler.js";
 import { resolveEmail } from "../services/email-resolver.js";
-import {
-  ingestCompanyContext,
-  companyDataset,
-  userDataset,
-  remember,
-} from "../services/cognee.js";
+import { getQueueConnection } from "../lib/redis.js";
 
-const connection = { url: config.redisUrl };
+const connection = getQueueConnection();
 
 export const companyPipelineQueue = new Queue("company-pipeline", { connection });
 
@@ -21,7 +15,6 @@ interface PipelineJobData {
   userId: string;
   clerkId: string;
   params: CompanySearchParams;
-  cogneeToken?: string;
 }
 
 async function updateJob(
@@ -37,8 +30,7 @@ async function updateJob(
 export async function enqueueCompanyPipeline(
   userId: string,
   clerkId: string,
-  params: CompanySearchParams,
-  cogneeToken?: string
+  params: CompanySearchParams
 ) {
   const job = await prisma.pipelineJob.create({
     data: {
@@ -54,14 +46,13 @@ export async function enqueueCompanyPipeline(
     userId,
     clerkId,
     params,
-    cogneeToken,
   });
 
   return job;
 }
 
 async function processPipeline(job: Job<PipelineJobData>) {
-  const { jobId, userId, clerkId, params, cogneeToken } = job.data;
+  const { jobId, userId, params } = job.data;
 
   try {
     await updateJob(jobId, { status: "searching", progress: 10, message: "Searching companies..." });
@@ -90,14 +81,8 @@ async function processPipeline(job: Job<PipelineJobData>) {
             domain: company.domain,
             description: company.description,
             sourceUrl: company.sourceUrl,
-            cogneeDataset: `company_pending`,
           },
           include: { contacts: true },
-        });
-
-        await prisma.company.update({
-          where: { id: dbCompany.id },
-          data: { cogneeDataset: companyDataset(dbCompany.id) },
         });
       }
 
@@ -108,12 +93,6 @@ async function processPipeline(job: Job<PipelineJobData>) {
         const crawl = await crawlCompanyWebsite(company.domain);
         crawlSummary = crawl.summary;
         crawledEmails = crawl.allEmails;
-
-        await ingestCompanyContext(
-          dbCompany.id,
-          `Company: ${company.name} (${company.domain})\n${crawl.summary}\nEmails found: ${crawl.allEmails.join(", ")}`,
-          cogneeToken
-        );
 
         await prisma.company.update({
           where: { id: dbCompany.id },
@@ -207,11 +186,6 @@ async function processPipeline(job: Job<PipelineJobData>) {
         sourceUrl: company.sourceUrl,
       });
     }
-
-    await remember(
-      `Job search for ${params.role}: found ${results.length} companies - ${results.map((r) => r.name).join(", ")}`,
-      { dataset: userDataset(clerkId), token: cogneeToken }
-    );
 
     await updateJob(jobId, {
       status: "completed",

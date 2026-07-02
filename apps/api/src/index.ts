@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./load-env.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -15,9 +15,31 @@ import outreachRoutes from "./routes/outreach.js";
 
 const app = express();
 
+const corsOrigins = new Set(
+  [
+    config.appUrl,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ].filter(Boolean)
+);
+
 app.use(helmet());
-app.use(cors({ origin: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000", credentials: true }));
-app.use(express.json());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (
+        !origin ||
+        corsOrigins.has(origin) ||
+        config.nodeEnv === "development"
+      ) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);app.use(express.json());
 
 app.use("/api", healthRoutes);
 app.use("/api/auth", authRoutes);

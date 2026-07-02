@@ -1,36 +1,95 @@
 import { Composio } from "@composio/core";
 import { config } from "../config.js";
+import { AppError } from "../middleware/error.js";
 
 let composioClient: Composio | null = null;
 
 function getComposio(): Composio {
   if (!composioClient) {
     if (!config.composioApiKey) {
-      throw new Error("COMPOSIO_API_KEY is not configured");
+      throw new AppError(
+        503,
+        "Composio is not configured. Add COMPOSIO_API_KEY to your .env file.",
+        "COMPOSIO_NOT_CONFIGURED"
+      );
     }
     composioClient = new Composio({ apiKey: config.composioApiKey });
   }
   return composioClient;
 }
 
-export async function createUserSession(
-  userId: string,
-  toolkits: string[] = ["linkedin", "gmail"]
-) {
+function toComposioError(error: unknown, toolkit: string): AppError {
+  const message = error instanceof Error ? error.message : "Composio request failed";
+
+  if (message.includes("Invalid API key") || message.includes("401")) {
+    return new AppError(
+      503,
+      "Composio rejected this API key. Use a full project API key from composio.dev (Settings → Project Settings).",
+      "COMPOSIO_AUTH_FAILED"
+    );
+  }
+
+  if (
+    message.includes("No auth configs found") ||
+    message.includes("No Default auth config") ||
+    message.includes("connected_accounts/link")
+  ) {
+    return new AppError(
+      503,
+      `Auth is not set up in Composio for ${toolkit}. Enable the ${toolkit} toolkit in your Composio dashboard.`,
+      "COMPOSIO_TOOLKIT_NOT_CONFIGURED"
+    );
+  }
+
+  return new AppError(503, message, "COMPOSIO_ERROR");
+}
+
+async function getOrCreateAuthConfigId(toolkit: string): Promise<string> {
   const composio = getComposio();
-  return composio.experimental.toolRouter.createSession(userId, { toolkits });
+  const configs = await composio.authConfigs.list({ toolkit });
+  const enabled = (configs.items ?? []).filter((c) => c.status === "ENABLED");
+
+  if (enabled.length > 0) {
+    return enabled[0].id;
+  }
+
+  const created = await composio.authConfigs.create(toolkit, {
+    type: "use_composio_managed_auth",
+    name: `${toolkit} (Outpitch)`,
+  });
+
+  return created.id;
+}
+
+async function getToolkitAuthUrl(userId: string, toolkit: string): Promise<string> {
+  const composio = getComposio();
+
+  try {
+    const authConfigId = await getOrCreateAuthConfigId(toolkit);
+    const connectionRequest = await composio.connectedAccounts.link(userId, authConfigId, {
+      callbackUrl: `${config.appUrl}/settings`,
+    });
+    const url = connectionRequest.redirectUrl ?? "";
+    if (!url) {
+      throw new AppError(
+        502,
+        `Composio did not return an OAuth URL for ${toolkit}.`,
+        "COMPOSIO_NO_REDIRECT"
+      );
+    }
+    return url;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw toComposioError(error, toolkit);
+  }
 }
 
 export async function getLinkedInAuthUrl(userId: string): Promise<string> {
-  const composio = getComposio();
-  const connection = await composio.toolkits.authorize(userId, "linkedin");
-  return connection.redirectUrl ?? "";
+  return getToolkitAuthUrl(userId, "linkedin");
 }
 
 export async function getGmailAuthUrl(userId: string): Promise<string> {
-  const composio = getComposio();
-  const connection = await composio.toolkits.authorize(userId, "gmail");
-  return connection.redirectUrl ?? "";
+  return getToolkitAuthUrl(userId, "gmail");
 }
 
 export async function getLinkedInProfile(userId: string) {
@@ -39,6 +98,7 @@ export async function getLinkedInProfile(userId: string) {
     const result = await composio.tools.execute("LINKEDIN_GET_MY_INFO", {
       userId,
       arguments: {},
+      dangerouslySkipVersionCheck: true,
     });
     return result.data as Record<string, unknown>;
   } catch (error) {
@@ -59,6 +119,7 @@ export async function sendEmail(
       subject: params.subject,
       body: params.body,
     },
+    dangerouslySkipVersionCheck: true,
   });
   return result.data as Record<string, unknown>;
 }
@@ -69,6 +130,7 @@ export async function fetchEmails(userId: string, limit = 20) {
     const result = await composio.tools.execute("GMAIL_FETCH_EMAILS", {
       userId,
       arguments: { max_results: limit },
+      dangerouslySkipVersionCheck: true,
     });
     return result.data as Record<string, unknown>;
   } catch (error) {
@@ -77,16 +139,45 @@ export async function fetchEmails(userId: string, limit = 20) {
   }
 }
 
-export async function checkConnectionStatus(userId: string) {
+type ToolkitSlug = "linkedin" | "gmail";
+
+async function getConnectedAccounts(userId: string) {
   const composio = getComposio();
+  const accounts = await composio.connectedAccounts.list({ userIds: [userId] });
+  return accounts.items ?? [];
+}
+
+function hasToolkitConnection(
+  accounts: Awaited<ReturnType<typeof getConnectedAccounts>>,
+  toolkit: ToolkitSlug
+) {
+  return accounts.some(
+    (a: any) => (a.toolkit?.slug ?? a.appName ?? "").toLowerCase() === toolkit
+  );
+}
+
+export async function checkConnectionStatus(userId: string) {
   try {
-    const accounts = await composio.connectedAccounts.list({ userIds: [userId] });
-    const linked = accounts.items ?? [];
+    const accounts = await getConnectedAccounts(userId);
     return {
-      linkedin: linked.some((a) => a.toolkit?.slug?.toLowerCase() === "linkedin"),
-      gmail: linked.some((a) => a.toolkit?.slug?.toLowerCase() === "gmail"),
+      linkedin: hasToolkitConnection(accounts, "linkedin"),
+      gmail: hasToolkitConnection(accounts, "gmail"),
     };
   } catch {
     return { linkedin: false, gmail: false };
   }
+}
+
+export async function disconnectToolkit(userId: string, toolkit: ToolkitSlug) {
+  const composio = getComposio();
+  const accounts = await getConnectedAccounts(userId);
+  const matches = accounts.filter(
+    (a: any) => (a.toolkit?.slug ?? a.appName ?? "").toLowerCase() === toolkit
+  );
+
+  for (const account of matches) {
+    await composio.connectedAccounts.delete((account as any).id);
+  }
+
+  return { disconnected: matches.length > 0 };
 }

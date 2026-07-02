@@ -4,7 +4,6 @@ import { CompanySearchParamsSchema } from "@outpitch/types";
 import { asyncHandler } from "../middleware/error.js";
 import { requireAuth } from "../middleware/auth.js";
 import { enqueueCompanyPipeline } from "../jobs/company-pipeline.js";
-import { improve, userDataset } from "../services/cognee.js";
 
 const router = Router();
 
@@ -40,13 +39,11 @@ router.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     const params = CompanySearchParamsSchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
 
     const job = await enqueueCompanyPipeline(
       req.auth!.userId,
       req.auth!.clerkId,
-      params,
-      user?.cogneeToken ?? undefined
+      params
     );
 
     res.json({ jobId: job.id, status: job.status });
@@ -73,8 +70,7 @@ router.post(
   "/:id/feedback",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { feedback, rating } = req.body as { feedback: string; rating?: "good" | "bad" };
-    const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
+    const { feedback } = req.body as { feedback: string; rating?: "good" | "bad" };
 
     await prisma.userCompanyLink.update({
       where: {
@@ -85,13 +81,6 @@ router.post(
       },
       data: { feedback },
     });
-
-    if (rating) {
-      await improve(
-        `${rating === "good" ? "Good match" : "Bad match"}: ${feedback}`,
-        { dataset: userDataset(req.auth!.clerkId), token: user?.cogneeToken ?? undefined }
-      );
-    }
 
     res.json({ success: true });
   })
