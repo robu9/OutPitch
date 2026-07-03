@@ -11,7 +11,7 @@ export const config = {
   cogneeServiceToken: process.env.COGNEE_SERVICE_TOKEN ?? process.env.COGNEE_API_KEY ?? "",
   cogneeTenantId: process.env.COGNEE_TENANT_ID ?? "",
   composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
-  serpApiKey: process.env.SERPAPI_KEY ?? "",
+  serperApiKey: process.env.SERPER_API_KEY ?? "",
   apolloApiKey: process.env.APOLLO_API_KEY ?? "",
   clerkSecretKey: process.env.CLERK_SECRET_KEY ?? "",
   clerkWebhookSecret: process.env.CLERK_WEBHOOK_SECRET ?? "",

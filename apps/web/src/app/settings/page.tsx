@@ -9,6 +9,7 @@ import { Mail, Linkedin, Loader2 } from "lucide-react";
 
 type ConnectionStatus = {
   linkedinConnected: boolean;
+  linkedinTokenExpired?: boolean;
   gmailConnected: boolean;
   linkedinProfileSynced?: boolean;
   linkedinSyncing?: boolean;
@@ -185,26 +186,41 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   {linkedinSyncing
                     ? "Syncing your profile…"
-                    : status.linkedinConnected
-                      ? status.linkedinProfileSynced
-                        ? "Connected — profile synced"
-                        : "Connected — sync your profile"
-                      : "Profile data for job matching"}
+                    : status.linkedinTokenExpired
+                      ? "Session expired — please reconnect"
+                      : status.linkedinConnected
+                        ? status.linkedinProfileSynced
+                          ? "Connected — profile synced"
+                          : "Connected — sync your profile"
+                        : "Profile data for job matching"}
                 </p>
               </div>
             </div>
             {status.linkedinConnected ? (
               <div className="flex items-center gap-2">
-                <button
-                  onClick={syncLinkedIn}
-                  disabled={loading !== null}
-                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-accent disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {loading === "linkedin-sync" && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  {loading === "linkedin-sync" ? "Syncing…" : "Sync now"}
-                </button>
+                {status.linkedinTokenExpired ? (
+                  <button
+                    onClick={() => { disconnectLinkedIn().then(() => connectLinkedIn()); }}
+                    disabled={loading !== null}
+                    className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {(loading === "linkedin-disconnect" || loading === "linkedin-connect") && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    )}
+                    Reconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={syncLinkedIn}
+                    disabled={loading !== null}
+                    className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-accent disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {loading === "linkedin-sync" && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    )}
+                    {loading === "linkedin-sync" ? "Syncing…" : "Sync now"}
+                  </button>
+                )}
                 <button
                   onClick={disconnectLinkedIn}
                   disabled={loading !== null}

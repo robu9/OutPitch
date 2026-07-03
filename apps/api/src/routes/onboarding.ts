@@ -21,7 +21,19 @@ const router = Router();
 const linkedInSyncInFlight = new Set<string>();
 
 export async function syncLinkedInForUser(userId: string, clerkId: string) {
-  const profile = await getLinkedInProfileWithRetry(clerkId);
+  let profile;
+  try {
+    profile = await getLinkedInProfileWithRetry(clerkId);
+  } catch (error) {
+    if (error instanceof AppError && error.code === "LINKEDIN_TOKEN_EXPIRED") {
+      throw new AppError(
+        401,
+        "Your LinkedIn session has expired. Please reconnect LinkedIn in Settings to refresh access.",
+        "LINKEDIN_TOKEN_EXPIRED"
+      );
+    }
+    throw error;
+  }
   if (!profile) {
     throw new AppError(400, "LinkedIn not connected", "LINKEDIN_NOT_CONNECTED");
   }
@@ -88,11 +100,13 @@ router.get(
   asyncHandler(async (req, res) => {
     const connections = await checkConnectionStatus(req.auth!.clerkId);
 
-    const synced = await ensureLinkedInSynced(
-      req.auth!.userId,
-      req.auth!.clerkId,
-      connections.linkedin
-    );
+    const synced = connections.linkedinHealthy
+      ? await ensureLinkedInSynced(
+          req.auth!.userId,
+          req.auth!.clerkId,
+          connections.linkedin
+        )
+      : false;
 
     const user = await prisma.user.findUnique({
       where: { id: req.auth!.userId },
@@ -102,6 +116,7 @@ router.get(
     res.json({
       onboardingDone: user?.onboardingDone ?? false,
       linkedinConnected: connections.linkedin,
+      linkedinTokenExpired: connections.linkedin && !connections.linkedinHealthy,
       gmailConnected: connections.gmail,
       linkedinProfileSynced: Boolean(user?.profile?.linkedinData),
       linkedinSyncing: linkedInSyncInFlight.has(req.auth!.clerkId),
@@ -249,4 +264,4 @@ router.post(
 );
 
 export default router;
-
+

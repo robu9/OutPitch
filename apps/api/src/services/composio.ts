@@ -119,12 +119,92 @@ async function executeLinkedInTool(
   args: Record<string, unknown> = {}
 ) {
   const composio = getComposio();
-  const result = await composio.tools.execute(slug, {
-    userId,
-    arguments: args,
-    dangerouslySkipVersionCheck: true,
-  });
-  return (result.data ?? {}) as Record<string, unknown>;
+  try {
+    const result = await composio.tools.execute(slug, {
+      userId,
+      arguments: args,
+      dangerouslySkipVersionCheck: true,
+    });
+    return (result.data ?? {}) as Record<string, unknown>;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (
+      msg.includes("Error executing") ||
+      msg.includes("token") ||
+      msg.includes("expired") ||
+      msg.includes("unauthorized") ||
+      msg.includes("401")
+    ) {
+      throw new AppError(
+        401,
+        `LinkedIn OAuth token may have expired. Please reconnect LinkedIn in Settings to refresh your access.`,
+        "LINKEDIN_TOKEN_EXPIRED"
+      );
+    }
+    throw error;
+  }
+}
+
+async function fetchLinkedInPosts(
+  userId: string,
+  personId: string
+): Promise<Array<{ text?: string; createdAt?: string; url?: string }>> {
+  try {
+    const authorUrn = `urn:li:person:${personId}`;
+    const result = await executeLinkedInTool(userId, "LINKEDIN_ADS_LIST_POSTS", {
+      author: authorUrn,
+      count: 30,
+    });
+
+    const elements = (result.elements ?? result.results ?? result.data) as
+      | Array<Record<string, unknown>>
+      | undefined;
+
+    if (!Array.isArray(elements)) {
+      console.warn("LINKEDIN_ADS_LIST_POSTS returned unexpected shape:", Object.keys(result));
+      return [];
+    }
+
+    return elements.map((post) => {
+      const commentary =
+        (post.commentary as string) ??
+        (post.specificContent as any)?.["com.linkedin.ugc.ShareContent"]?.shareCommentary?.text ??
+        (post.text as string) ??
+        "";
+
+      const created = post.createdAt ?? post.created ?? post.publishedAt;
+      const createdAt =
+        typeof created === "number"
+          ? new Date(created).toISOString().split("T")[0]
+          : typeof created === "string"
+            ? created
+            : undefined;
+
+      const postId = (post.id ?? post.urn ?? "") as string;
+      const url = postId
+        ? `https://www.linkedin.com/feed/update/${postId}`
+        : undefined;
+
+      return { text: commentary, createdAt, url };
+    }).filter((p) => p.text && p.text.length > 0);
+  } catch (error) {
+    console.warn("LinkedIn posts fetch failed:", error instanceof Error ? error.message : error);
+    return [];
+  }
+}
+
+async function fetchPostContent(
+  userId: string,
+  postUrn: string
+): Promise<string | null> {
+  try {
+    const result = await executeLinkedInTool(userId, "LINKEDIN_GET_POST_CONTENT", {
+      post_urn: postUrn,
+    });
+    return (result.commentary as string) ?? (result.text as string) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getLinkedInProfile(userId: string) {
@@ -141,11 +221,27 @@ export async function getLinkedInProfile(userId: string) {
         profile.personProfile = personProfile;
         Object.assign(profile, personProfile);
       } catch (error) {
+        if (error instanceof AppError && error.code === "LINKEDIN_TOKEN_EXPIRED") throw error;
         console.warn("LinkedIn person profile fetch failed:", error);
       }
     }
 
-    // Scrape the public profile page for full data (education, skills, experience, activity)
+    // Fetch posts via API (reliable — uses authenticated access)
+    if (personId) {
+      try {
+        const posts = await fetchLinkedInPosts(userId, personId);
+        if (posts.length > 0) {
+          profile.posts = posts;
+          console.log(`Fetched ${posts.length} LinkedIn posts via API for ${personId}`);
+        }
+      } catch (error) {
+        if (error instanceof AppError && error.code === "LINKEDIN_TOKEN_EXPIRED") throw error;
+        console.warn("LinkedIn posts API failed:", error);
+      }
+    }
+
+    // Scrape the public profile page for supplementary data
+    // (about, skills, certifications, projects — things the API may not return)
     const vanityName =
       (profile.vanityName as string) ??
       ((profile.personProfile as Record<string, unknown>)?.vanityName as string);
@@ -154,17 +250,17 @@ export async function getLinkedInProfile(userId: string) {
         const scraped = await scrapeLinkedInProfile(vanityName);
         if (scraped) {
           profile.scraped = scraped;
-          if (scraped.location) profile.location = scraped.location;
-          if (scraped.about) profile.about = scraped.about;
-          if (scraped.experience.length > 0) profile.experience = scraped.experience;
-          if (scraped.education.length > 0) profile.education = scraped.education;
-          if (scraped.skills.length > 0) profile.skills = scraped.skills;
+          if (scraped.location && !profile.location) profile.location = scraped.location;
+          if (scraped.about && !profile.about) profile.about = scraped.about;
+          if (scraped.experience.length > 0 && !profile.experience) profile.experience = scraped.experience;
+          if (scraped.education.length > 0 && !profile.education) profile.education = scraped.education;
+          if (scraped.skills.length > 0 && !profile.skills) profile.skills = scraped.skills;
           if (scraped.certifications.length > 0) profile.certifications = scraped.certifications;
           if (scraped.projects.length > 0) profile.projects = scraped.projects;
-          if (scraped.activity.length > 0) profile.activity = scraped.activity;
+          if (scraped.activity.length > 0 && !profile.activity) profile.activity = scraped.activity;
         } else {
           console.log(
-            `LinkedIn scrape returned null for ${vanityName} — profile will have API-only data. ` +
+            `LinkedIn scrape returned null for ${vanityName} — profile will have API data only. ` +
               `Use POST /onboarding/import-profile to manually add full profile data.`
           );
         }
@@ -176,6 +272,9 @@ export async function getLinkedInProfile(userId: string) {
     profile.syncedAt = new Date().toISOString();
     return profile;
   } catch (error) {
+    if (error instanceof AppError && error.code === "LINKEDIN_TOKEN_EXPIRED") {
+      throw error;
+    }
     console.warn("LinkedIn profile fetch failed:", error);
     return null;
   }
@@ -187,8 +286,15 @@ export async function getLinkedInProfileWithRetry(
   delayMs = 1500
 ) {
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    const profile = await getLinkedInProfile(userId);
-    if (profile) return profile;
+    try {
+      const profile = await getLinkedInProfile(userId);
+      if (profile) return profile;
+    } catch (error) {
+      if (error instanceof AppError && error.code === "LINKEDIN_TOKEN_EXPIRED") {
+        throw error;
+      }
+      console.warn(`LinkedIn profile attempt ${attempt}/${attempts} failed:`, error);
+    }
     if (attempt < attempts) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
@@ -248,12 +354,29 @@ function hasToolkitConnection(
 export async function checkConnectionStatus(userId: string) {
   try {
     const accounts = await getConnectedAccounts(userId);
+    const linkedinConnected = hasToolkitConnection(accounts, "linkedin");
+    const gmailConnected = hasToolkitConnection(accounts, "gmail");
+
+    let linkedinHealthy = false;
+    if (linkedinConnected) {
+      try {
+        await executeLinkedInTool(userId, "LINKEDIN_GET_MY_INFO");
+        linkedinHealthy = true;
+      } catch (error) {
+        const code = error instanceof AppError ? error.code : undefined;
+        if (code === "LINKEDIN_TOKEN_EXPIRED") {
+          console.warn(`LinkedIn token expired for ${userId} — user needs to reconnect`);
+        }
+      }
+    }
+
     return {
-      linkedin: hasToolkitConnection(accounts, "linkedin"),
-      gmail: hasToolkitConnection(accounts, "gmail"),
+      linkedin: linkedinConnected,
+      linkedinHealthy,
+      gmail: gmailConnected,
     };
   } catch {
-    return { linkedin: false, gmail: false };
+    return { linkedin: false, linkedinHealthy: false, gmail: false };
   }
 }
 

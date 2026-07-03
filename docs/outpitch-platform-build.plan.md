@@ -1,6 +1,6 @@
 ---
 name: Outpitch Platform Build
-overview: "Scaffold Outpitch as a production-ready monorepo: Next.js frontend, Node/TS API, self-hosted Cognee memory layer, and integrations for LinkedIn (Clerk + Composio), SerpAPI company discovery, website crawling, Apollo email fallback, Gemini chat agent, and Composio Gmail sending."
+overview: "Scaffold Outpitch as a production-ready monorepo: Next.js frontend, Node/TS API, self-hosted Cognee memory layer, and integrations for LinkedIn (Clerk + Composio), Serper.dev company discovery, website crawling, Apollo email fallback, Gemini chat agent, and Composio Gmail sending."
 todos:
   - id: monorepo-scaffold
     content: Initialize npm workspaces monorepo (apps/web, apps/api, packages/types, packages/db) with Turbo, TS, ESLint, .env.example
@@ -21,7 +21,7 @@ todos:
     content: "Implement Composio service: LinkedIn profile fetch, Gmail OAuth URL, send/fetch emails"
     status: completed
   - id: discovery-pipeline
-    content: Build SerpAPI search + website crawler + Apollo fallback email resolver with BullMQ jobs
+    content: Build Serper.dev search + website crawler + Apollo fallback email resolver with BullMQ jobs
     status: completed
   - id: gemini-agent
     content: Implement Gemini agent with function tools wired to pipeline, Cognee, and Composio
@@ -64,7 +64,7 @@ flowchart TB
 
     subgraph external [External Services]
         Composio[Composio LinkedIn + Gmail]
-        Serp[SerpAPI]
+        Serp[Serper.dev]
         Apollo[Apollo.io]
         Gemini[Google Gemini]
     end
@@ -195,7 +195,7 @@ sequenceDiagram
 ```
 
 **Implementations:**
-- [`apps/api/src/services/serp.ts`](apps/api/src/services/serp.ts) — SerpAPI Google search + structured queries (`site:linkedin.com/in "Recruiter" "acme.com"`)
+- [`apps/api/src/services/serp.ts`](apps/api/src/services/serp.ts) — Serper.dev Google search + structured queries (`site:linkedin.com/in "Recruiter" "acme.com"`)
 - [`apps/api/src/services/crawler.ts`](apps/api/src/services/crawler.ts) — `cheerio` + `robots-parser`; max 10 pages/company; extract emails via regex + mailto links; respect rate limits
 - [`apps/api/src/services/email-resolver.ts`](apps/api/src/services/email-resolver.ts) — priority: crawl → pattern guess from known domain email → Apollo `POST /people/match` (1 credit each, only when needed)
 - [`apps/api/src/jobs/company-pipeline.ts`](apps/api/src/jobs/company-pipeline.ts) — BullMQ async jobs so UI shows progress
@@ -269,7 +269,7 @@ COGNEE_SERVICE_TOKEN=
 
 # Integrations
 COMPOSIO_API_KEY=
-SERPAPI_KEY=
+SERPER_API_KEY=
 APOLLO_API_KEY=
 
 # Data
@@ -291,7 +291,7 @@ REDIS_URL=redis://localhost:6379
 ### Phase 2 — Integrations layer
 - Cognee service wrapper (remember/recall/improve/forget + dataset management)
 - Composio service (LinkedIn profile fetch, Gmail send/fetch, OAuth URL generation)
-- SerpAPI + crawler + Apollo clients with typed responses and error handling
+- Serper.dev + crawler + Apollo clients with typed responses and error handling
 
 ### Phase 3 — Pipeline + agent
 - BullMQ company discovery pipeline

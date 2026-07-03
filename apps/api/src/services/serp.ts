@@ -7,30 +7,51 @@ interface SerpResult {
   snippet: string;
 }
 
-interface SerpResponse {
-  organic_results?: SerpResult[];
+interface SerperResponse {
+  organic?: SerpResult[];
+  knowledgeGraph?: Record<string, unknown>;
 }
 
 async function serpSearch(query: string, num = 10): Promise<SerpResult[]> {
-  if (!config.serpApiKey) {
-    console.warn("SERPAPI_KEY not set, returning empty results");
+  if (!config.serperApiKey) {
+    console.warn("SERPER_API_KEY not set, returning empty results");
     return [];
   }
 
-  const params = new URLSearchParams({
-    q: query,
-    api_key: config.serpApiKey,
-    engine: "google",
-    num: String(num),
+  const response = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": config.serperApiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q: query, num }),
   });
 
-  const response = await fetch(`https://serpapi.com/search?${params}`);
   if (!response.ok) {
-    throw new Error(`SerpAPI error: ${response.status}`);
+    throw new Error(`Serper API error: ${response.status}`);
   }
 
-  const data = (await response.json()) as SerpResponse;
-  return data.organic_results ?? [];
+  const data = (await response.json()) as SerperResponse;
+  return data.organic ?? [];
+}
+
+export async function serperSearchRaw(
+  query: string,
+  num = 10
+): Promise<SerperResponse> {
+  if (!config.serperApiKey) return {};
+
+  const response = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": config.serperApiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q: query, num }),
+  });
+
+  if (!response.ok) return {};
+  return (await response.json()) as SerperResponse;
 }
 
 function extractDomain(url: string): string | null {
