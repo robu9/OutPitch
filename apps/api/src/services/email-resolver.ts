@@ -95,7 +95,6 @@ export async function resolveEmail(params: {
   const firstName = nameParts[0] ?? "";
   const lastName = nameParts.slice(1).join(" ");
 
-  const nameLower = params.name.toLowerCase();
   for (const email of params.crawledEmails) {
     const local = email.split("@")[0].toLowerCase();
     if (
@@ -113,18 +112,9 @@ export async function resolveEmail(params: {
       params.domain,
       params.crawledEmails
     );
-    return { email: patterns[0], source: "pattern", confidence: 60 };
-  }
-
-  const apollo = await enrichPerson({
-    firstName,
-    lastName,
-    domain: params.domain,
-    linkedinUrl: params.linkedinUrl,
-  });
-
-  if (apollo?.email) {
-    return { email: apollo.email, source: "apollo", confidence: apollo.confidence };
+    if (patterns[0]) {
+      return { email: patterns[0], source: "pattern", confidence: 60 };
+    }
   }
 
   const patterns = guessEmailPatterns(firstName, lastName, params.domain);
@@ -133,4 +123,30 @@ export async function resolveEmail(params: {
   }
 
   return null;
+}
+
+export async function resolveEmailViaApollo(params: {
+  name: string;
+  domain: string;
+  linkedinUrl?: string;
+}): Promise<{ email: string; source: string; confidence: number; title?: string } | null> {
+  const nameParts = params.name.split(" ");
+  const firstName = nameParts[0] ?? "";
+  const lastName = nameParts.slice(1).join(" ");
+
+  const apollo = await enrichPerson({
+    firstName,
+    lastName,
+    domain: params.domain,
+    linkedinUrl: params.linkedinUrl,
+  });
+
+  if (!apollo?.email) return null;
+
+  return {
+    email: apollo.email,
+    source: "apollo",
+    confidence: apollo.confidence,
+    title: apollo.title,
+  };
 }

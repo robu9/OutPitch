@@ -13,6 +13,9 @@ export const config = {
   composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
   serperApiKey: process.env.SERPER_API_KEY ?? "",
   apolloApiKey: process.env.APOLLO_API_KEY ?? "",
+  emailVerifierHeloDomain: process.env.EMAIL_VERIFIER_HELO_DOMAIN ?? "outpitch.app",
+  emailVerifierFromEmail: process.env.EMAIL_VERIFIER_FROM_EMAIL ?? "verify@outpitch.app",
+  emailVerifierSmtpTimeoutMs: parseInt(process.env.EMAIL_VERIFIER_SMTP_TIMEOUT_MS ?? "8000", 10),
   clerkSecretKey: process.env.CLERK_SECRET_KEY ?? "",
   clerkWebhookSecret: process.env.CLERK_WEBHOOK_SECRET ?? "",
 };

@@ -3,7 +3,8 @@ import { prisma, type CompanyContact } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import { searchCompanies, searchPeopleAtCompany } from "../services/serp.js";
 import { crawlCompanyWebsite } from "../services/crawler.js";
-import { resolveEmail } from "../services/email-resolver.js";
+import { resolveEmail, resolveEmailViaApollo } from "../services/email-resolver.js";
+import { verifyEmailExists } from "../services/email-verifier.js";
 import {
   ingestCompanyContext,
   companyDataset,
@@ -125,39 +126,65 @@ async function processPipeline(job: Job<PipelineJobData>) {
           .filter((e: string | null | undefined): e is string => !!e);
       }
 
-      await updateJob(jobId, {
-        status: "enriching",
-        progress: progress + 5,
-        message: `Finding contacts at ${company.name}...`,
-      });
-
       const people = await searchPeopleAtCompany(company.domain);
-      const contacts = [];
+      const contacts: Array<{
+        name: string;
+        title?: string;
+        email: string;
+        source: string;
+        confidence: number;
+      }> = [];
+
+      type PersonCandidate = {
+        person: (typeof people)[number];
+        existing?: CompanyContact;
+        resolved: { email: string; source: string; confidence: number; title?: string };
+      };
+
+      const candidates: PersonCandidate[] = [];
 
       for (const person of people.slice(0, 5)) {
         const existing = dbCompany.contacts.find(
           (c: CompanyContact) => c.name.toLowerCase() === person.name.toLowerCase()
         );
-        if (existing?.email) {
-          contacts.push({
-            name: existing.name,
-            title: existing.title ?? person.title,
-            email: existing.email,
-            source: existing.source,
-            confidence: existing.confidence,
-          });
-          continue;
-        }
 
-        const resolved = await resolveEmail({
-          name: person.name,
-          domain: company.domain,
-          crawledEmails,
-          title: person.title,
-          linkedinUrl: person.linkedinUrl,
-        });
+        let resolved =
+          existing?.email
+            ? {
+                email: existing.email,
+                source: existing.source,
+                confidence: existing.confidence,
+              }
+            : await resolveEmail({
+                name: person.name,
+                domain: company.domain,
+                crawledEmails,
+                title: person.title,
+                linkedinUrl: person.linkedinUrl,
+              });
 
         if (resolved) {
+          candidates.push({ person, existing, resolved });
+        }
+      }
+
+      await updateJob(jobId, {
+        status: "enriching",
+        progress: progress + 3,
+        message: `Verifying emails at ${company.name}...`,
+      });
+
+      for (const { person, existing, resolved } of candidates) {
+        const verification = await verifyEmailExists(resolved.email);
+        if (verification.valid) {
+          contacts.push({
+            name: person.name,
+            title: person.title ?? resolved.title,
+            email: resolved.email,
+            source: resolved.source,
+            confidence: resolved.confidence,
+          });
+
           if (existing) {
             await prisma.companyContact.update({
               where: { id: existing.id },
@@ -172,7 +199,7 @@ async function processPipeline(job: Job<PipelineJobData>) {
               data: {
                 companyId: dbCompany.id,
                 name: person.name,
-                title: person.title,
+                title: person.title ?? resolved.title,
                 email: resolved.email,
                 linkedinUrl: person.linkedinUrl,
                 source: resolved.source,
@@ -180,13 +207,70 @@ async function processPipeline(job: Job<PipelineJobData>) {
               },
             });
           }
+        } else {
+          console.log(
+            `Rejected email ${resolved.email} for ${person.name} at ${company.domain}: ${verification.reason}`
+          );
+        }
+      }
+
+      if (contacts.length === 0) {
+        await updateJob(jobId, {
+          status: "enriching",
+          progress: progress + 5,
+          message: `No verified emails — trying Apollo for ${company.name}...`,
+        });
+
+        for (const person of people.slice(0, 5)) {
+          const apolloResolved = await resolveEmailViaApollo({
+            name: person.name,
+            domain: company.domain,
+            linkedinUrl: person.linkedinUrl,
+          });
+          if (!apolloResolved) continue;
+
+          const verification = await verifyEmailExists(apolloResolved.email);
+          if (!verification.valid) {
+            console.log(
+              `Rejected Apollo email ${apolloResolved.email} for ${person.name} at ${company.domain}: ${verification.reason}`
+            );
+            continue;
+          }
+
+          const existing = dbCompany.contacts.find(
+            (c: CompanyContact) => c.name.toLowerCase() === person.name.toLowerCase()
+          );
+
+          if (existing) {
+            await prisma.companyContact.update({
+              where: { id: existing.id },
+              data: {
+                email: apolloResolved.email,
+                source: apolloResolved.source,
+                confidence: apolloResolved.confidence,
+                title: apolloResolved.title ?? person.title,
+              },
+            });
+          } else {
+            await prisma.companyContact.create({
+              data: {
+                companyId: dbCompany.id,
+                name: person.name,
+                title: apolloResolved.title ?? person.title,
+                email: apolloResolved.email,
+                linkedinUrl: person.linkedinUrl,
+                source: apolloResolved.source,
+                confidence: apolloResolved.confidence,
+              },
+            });
+          }
 
           contacts.push({
             name: person.name,
-            title: person.title,
-            email: resolved.email,
-            source: resolved.source,
-            confidence: resolved.confidence,
+            title: apolloResolved.title ?? person.title,
+            email: apolloResolved.email,
+            source: apolloResolved.source,
+            confidence: apolloResolved.confidence,
           });
         }
       }
