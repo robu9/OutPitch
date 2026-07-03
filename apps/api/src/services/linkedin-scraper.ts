@@ -613,16 +613,102 @@ async function scrapeViaSerper(vanityName: string): Promise<LinkedInScrapedProfi
     const hasData = profile.name || profile.headline || profile.about || profile.experience.length > 0;
     if (!hasData) return null;
 
+    // Second Serper call: search for posts by this user
+    const posts = await searchPostsViaSerper(vanityName, profile.name);
+    if (posts.length > 0) {
+      profile.activity = posts;
+    }
+
     console.log(
       `LinkedIn via Serper OK for ${vanityName}: ` +
         `name=${profile.name ?? "?"}, headline=${profile.headline ?? "?"}, ` +
-        `exp=${profile.experience.length}, edu=${profile.education.length}`
+        `exp=${profile.experience.length}, edu=${profile.education.length}, ` +
+        `posts=${profile.activity.length}`
     );
     return profile;
   } catch (error) {
     console.warn("Serper LinkedIn fallback error:", error instanceof Error ? error.message : error);
     return null;
   }
+}
+
+/**
+ * Search Google via Serper for LinkedIn posts authored by this user.
+ *
+ * LinkedIn post URL pattern (confirmed):
+ *   Profile: linkedin.com/in/{vanityName}
+ *   Posts:   linkedin.com/posts/{vanityName}_{post-slug}-activity-{id}-{hash}
+ *
+ * The vanity name from /in/ is reused verbatim in /posts/, followed by
+ * an underscore and the post slug.
+ */
+async function searchPostsViaSerper(
+  vanityName: string,
+  _displayName?: string
+): Promise<LinkedInScrapedProfile["activity"]> {
+  if (!config.serperApiKey) return [];
+
+  const posts: LinkedInScrapedProfile["activity"] = [];
+  const seen = new Set<string>();
+
+  // site: is most precise but Serper free tier rate-limits it.
+  // Plain URL search is the reliable fallback.
+  const queries = [
+    `site:linkedin.com/posts/${vanityName}`,
+    `linkedin.com/posts/${vanityName}`,
+  ];
+
+  for (const query of queries) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch("https://google.serper.dev/search", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "X-API-KEY": config.serperApiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ q: query, num: 20 }),
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) continue;
+
+      const data = (await response.json()) as {
+        organic?: Array<{ title?: string; snippet?: string; link?: string }>;
+        message?: string;
+      };
+
+      // Serper free tier may reject site: queries — skip to fallback
+      if (data.message) continue;
+
+      for (const r of data.organic ?? []) {
+        // Only accept URLs matching /posts/{vanityName}
+        if (!r.link?.includes(`/posts/${vanityName}`)) continue;
+        if (seen.has(r.link)) continue;
+        seen.add(r.link);
+
+        const text = r.snippet ?? r.title ?? "";
+        if (text) {
+          posts.push({
+            type: "post",
+            text: text.slice(0, 500),
+            url: r.link,
+          });
+        }
+      }
+
+      if (posts.length > 0) break;
+    } catch {
+      continue;
+    }
+  }
+
+  if (posts.length > 0) {
+    console.log(`Found ${posts.length} LinkedIn posts via Serper for ${vanityName}`);
+  }
+  return posts;
 }
 
 /**
