@@ -5,6 +5,7 @@ import {
   extractPersonId,
   normalizeLinkedInProfileFields,
 } from "./linkedin-profile.js";
+import { scrapeLinkedInProfile } from "./linkedin-scraper.js";
 
 let composioClient: Composio | null = null;
 
@@ -68,6 +69,7 @@ async function getOrCreateAuthConfigId(toolkit: string): Promise<string> {
               "profile",
               "email",
               "w_member_social",
+              "r_member_social",
               "r_profile_basicinfo",
               "r_primary_current_experience",
               "r_most_recent_education",
@@ -140,6 +142,34 @@ export async function getLinkedInProfile(userId: string) {
         Object.assign(profile, personProfile);
       } catch (error) {
         console.warn("LinkedIn person profile fetch failed:", error);
+      }
+    }
+
+    // Scrape the public profile page for full data (education, skills, experience, activity)
+    const vanityName =
+      (profile.vanityName as string) ??
+      ((profile.personProfile as Record<string, unknown>)?.vanityName as string);
+    if (vanityName) {
+      try {
+        const scraped = await scrapeLinkedInProfile(vanityName);
+        if (scraped) {
+          profile.scraped = scraped;
+          if (scraped.location) profile.location = scraped.location;
+          if (scraped.about) profile.about = scraped.about;
+          if (scraped.experience.length > 0) profile.experience = scraped.experience;
+          if (scraped.education.length > 0) profile.education = scraped.education;
+          if (scraped.skills.length > 0) profile.skills = scraped.skills;
+          if (scraped.certifications.length > 0) profile.certifications = scraped.certifications;
+          if (scraped.projects.length > 0) profile.projects = scraped.projects;
+          if (scraped.activity.length > 0) profile.activity = scraped.activity;
+        } else {
+          console.log(
+            `LinkedIn scrape returned null for ${vanityName} — profile will have API-only data. ` +
+              `Use POST /onboarding/import-profile to manually add full profile data.`
+          );
+        }
+      } catch (error) {
+        console.warn("LinkedIn scrape failed:", error);
       }
     }
 

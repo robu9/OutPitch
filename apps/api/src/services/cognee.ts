@@ -56,6 +56,23 @@ async function cogneeFetch(
   return response.text();
 }
 
+function formatChunkSearchResult(result: unknown): RecallResult[] {
+  if (!Array.isArray(result)) return [];
+
+  const chunks: RecallResult[] = [];
+  for (const group of result) {
+    const searchResult = (group as { search_result?: Array<{ text?: string; score?: number }> })
+      .search_result;
+    if (!Array.isArray(searchResult)) continue;
+    for (const chunk of searchResult) {
+      if (chunk.text) {
+        chunks.push({ content: chunk.text, score: chunk.score });
+      }
+    }
+  }
+  return chunks;
+}
+
 function formatRecallResult(result: unknown): RecallResult[] {
   if (Array.isArray(result)) {
     return result.map((r: { text?: string; content?: string; score?: number }) => ({
@@ -138,21 +155,30 @@ export async function remember(
 ) {
   if (!(await ensureReady())) return null;
 
+  const preview = content.length > 300 ? content.slice(0, 300) + "..." : content;
+  console.log(`[Cognee:remember] dataset=${options.dataset} | ${preview}`);
+
   try {
     const form = new FormData();
     form.append("data", new Blob([content], { type: "text/plain" }), "content.txt");
     form.append("datasetName", options.dataset);
     if (options.sessionId) form.append("session_id", options.sessionId);
 
-    return cogneeFetch("/api/v1/remember", {
+    const result = await cogneeFetch("/api/v1/remember", {
       method: "POST",
       token: options.token,
       body: form,
     });
+    console.log(`[Cognee:remember] ✓ stored (${content.length} chars)`);
+    return result;
   } catch (error) {
-    console.warn("Cognee remember failed:", error);
+    console.warn("[Cognee:remember] ✗ failed:", error);
     return null;
   }
+}
+
+function isConversationLogChunk(content: string): boolean {
+  return content.startsWith("User said:") && content.includes("Assistant:");
 }
 
 export async function recall(
@@ -166,21 +192,31 @@ export async function recall(
 ): Promise<RecallResult[]> {
   if (!(await ensureReady())) return [];
 
+  console.log(`[Cognee:recall] query="${query}" datasets=${options.datasets.join(",")}`);
+
   try {
-    const result = await cogneeFetch("/api/v1/recall", {
+    const result = await cogneeFetch("/api/v1/search", {
       method: "POST",
       token: options.token,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query,
+        search_type: "CHUNKS",
         datasets: options.datasets,
-        session_id: options.sessionId,
         top_k: options.topK ?? 10,
       }),
     });
-    return formatRecallResult(result);
+    const chunks = formatChunkSearchResult(result).filter(
+      (r) => !isConversationLogChunk(r.content)
+    );
+    console.log(`[Cognee:recall] ✓ ${chunks.length} chunks returned`);
+    for (const chunk of chunks) {
+      const preview = chunk.content.length > 150 ? chunk.content.slice(0, 150) + "..." : chunk.content;
+      console.log(`  → ${preview}`);
+    }
+    return chunks;
   } catch (error) {
-    console.warn("Cognee recall failed:", error);
+    console.warn("[Cognee:recall] ✗ failed:", error);
     return [];
   }
 }
@@ -191,20 +227,24 @@ export async function improve(
 ) {
   if (!(await ensureReady())) return null;
 
+  console.log(`[Cognee:improve] dataset=${options.dataset} | ${feedback}`);
+
   try {
     await remember(`User feedback: ${feedback}`, {
       dataset: options.dataset,
       token: options.token,
     });
 
-    return cogneeFetch("/api/v1/improve", {
+    const result = await cogneeFetch("/api/v1/improve", {
       method: "POST",
       token: options.token,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ datasetName: options.dataset, feedback }),
     });
+    console.log(`[Cognee:improve] ✓ done`);
+    return result;
   } catch (error) {
-    console.warn("Cognee improve failed:", error);
+    console.warn("[Cognee:improve] ✗ failed:", error);
     return null;
   }
 }
@@ -215,6 +255,8 @@ export async function forget(options: {
   query?: string;
 }) {
   if (!(await ensureReady())) return null;
+
+  console.log(`[Cognee:forget] dataset=${options.dataset} | topic=${options.query ?? "FULL DATASET"}`);
 
   try {
     if (options.query) {
@@ -246,7 +288,17 @@ export async function ingestUserProfile(
   token?: string
 ) {
   const dataset = userDataset(clerkId);
-  const content = `User profile: ${JSON.stringify(profile, null, 2)}`;
+
+  // Use structured builder if scraped data is available
+  const scraped = profile.scraped as import("./linkedin-scraper.js").LinkedInScrapedProfile | undefined;
+  let content: string;
+  if (scraped) {
+    const { buildFullProfileForIngestion } = await import("./linkedin-scraper.js");
+    content = buildFullProfileForIngestion(profile, scraped);
+  } else {
+    content = `User profile: ${JSON.stringify(profile, null, 2)}`;
+  }
+
   return remember(content, { dataset, token });
 }
 

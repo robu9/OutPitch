@@ -8,29 +8,33 @@ import { prisma } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import {
   remember,
-  recall,
   improve,
   forget,
   userDataset,
   recallUserAndCompany,
 } from "../services/cognee.js";
-import { sendEmail, fetchEmails } from "../services/composio.js";
+import { sendEmail, fetchEmails, getLinkedInProfileWithRetry } from "../services/composio.js";
 import { buildLinkedInProfileSummary } from "../services/linkedin-profile.js";
 import { enqueueCompanyPipeline, getPipelineStatus } from "../jobs/company-pipeline.js";
+import { ingestUserProfile } from "../services/cognee.js";
 
 const SYSTEM_PROMPT = `You are Outpitch, an AI job search assistant. You help users find companies, discover founder and recruiter contacts, draft personalized outreach emails, and track their job search progress.
 
-You have function tools (searchCompanies, recallContext, rememberFact, draftEmail, sendEmail, etc.) and receive the user's LinkedIn profile from their connected Composio account on every message.
+You receive the user's LinkedIn profile snapshot on every message (from Composio). For everything else, use Cognee memory tools dynamically — do not guess what is stored.
+
+Cognee memory tools (call only when needed):
+- recall(query): Search permanent memory for relevant facts before answering questions about preferences, past searches, outreach, or anything not in the profile snapshot
+- remember(content): Persist a new fact the user shared (goals, preferences, constraints, decisions) — not routine chat filler
+- improve(feedback): When the user corrects you or gives match quality feedback, refine future retrieval
+- forget(topic): When the user asks to remove or stop using a stored topic
 
 Guidelines:
-- Use the profile context provided to you; never claim you lack access to the user's LinkedIn data when it is present in context
-- LinkedIn profile data comes from the user's OAuth connection via Composio (LINKEDIN_GET_MY_INFO + LINKEDIN_GET_PERSON)
-- Use recallContext when you need additional memory beyond the profile snapshot
+- If the user asks about stored context and the profile snapshot is insufficient, call recall first
+- Never claim you lack LinkedIn profile data when it is present in context
+- LinkedIn posts/activity are not ingested — only basic profile fields. Say so honestly if asked about posts
 - Be proactive about suggesting companies and contacts
 - Draft concise, personalized cold emails (under 150 words)
-- Never send emails without explicit user confirmation
-- Give actionable career advice based on the user's profile and outreach history
-- When user gives feedback on companies, use improveMemory to refine future matches`;
+- Never send emails without explicit user confirmation`;
 
 function buildProfileContext(
   user: { name: string | null; linkedinConnected: boolean } | null,
@@ -120,31 +124,34 @@ const tools: FunctionDeclaration[] = [
     },
   },
   {
-    name: "rememberFact",
-    description: "Store an important fact about the user in memory",
+    name: "remember",
+    description:
+      "Cognee remember — persist text to the user's knowledge graph. Use when the user shares durable facts: job preferences, target roles, constraints, or decisions worth recalling later.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
-        fact: { type: SchemaType.STRING },
+        content: { type: SchemaType.STRING, description: "Fact or note to store" },
       },
-      required: ["fact"],
+      required: ["content"],
     },
   },
   {
-    name: "recallContext",
-    description: "Recall relevant context from memory",
+    name: "recall",
+    description:
+      "Cognee recall — query permanent memory. Use before answering questions about past context, preferences, outreach history, or LinkedIn details beyond the profile snapshot.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
-        query: { type: SchemaType.STRING },
-        companyId: { type: SchemaType.STRING },
+        query: { type: SchemaType.STRING, description: "What to look up in memory" },
+        companyId: { type: SchemaType.STRING, description: "Optional company dataset to include" },
       },
       required: ["query"],
     },
   },
   {
-    name: "improveMemory",
-    description: "Improve memory based on user feedback",
+    name: "improve",
+    description:
+      "Cognee improve — refine memory from user feedback. Use when the user corrects a match, says a company was a bad fit, or wants future results adjusted.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -154,8 +161,9 @@ const tools: FunctionDeclaration[] = [
     },
   },
   {
-    name: "forgetTopic",
-    description: "Remove a topic from memory",
+    name: "forget",
+    description:
+      "Cognee forget — prune a topic from memory. Use when the user explicitly wants something removed or forgotten.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -170,6 +178,30 @@ const tools: FunctionDeclaration[] = [
     parameters: {
       type: SchemaType.OBJECT,
       properties: {},
+    },
+  },
+  {
+    name: "resyncLinkedIn",
+    description:
+      "Re-sync the user's LinkedIn profile — pulls latest data from API + scrapes public profile for education, skills, experience, certifications, and activity. Use when the user says their profile info is stale or asks to refresh.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: "importProfileData",
+    description:
+      "Ingest user-provided profile text into memory. Use when the user pastes their LinkedIn profile, resume, bio, or any personal career info directly in chat.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        content: {
+          type: SchemaType.STRING,
+          description: "The profile/resume/bio text to store in memory",
+        },
+      },
+      required: ["content"],
     },
   },
 ];
@@ -265,31 +297,31 @@ async function executeTool(
       return JSON.stringify({ success: true, campaignId: campaign.id, result });
     }
 
-    case "rememberFact":
-      await remember(args.fact as string, {
+    case "remember":
+      await remember(args.content as string, {
         dataset: userDataset(ctx.clerkId),
         token: ctx.cogneeToken,
       });
       return JSON.stringify({ success: true });
 
-    case "recallContext": {
+    case "recall": {
       const results = await recallUserAndCompany(
         ctx.clerkId,
         args.companyId as string | undefined,
         args.query as string,
         ctx.cogneeToken
       );
-      return JSON.stringify(results);
+      return JSON.stringify({ chunks: results });
     }
 
-    case "improveMemory":
+    case "improve":
       await improve(args.feedback as string, {
         dataset: userDataset(ctx.clerkId),
         token: ctx.cogneeToken,
       });
       return JSON.stringify({ success: true });
 
-    case "forgetTopic":
+    case "forget":
       await forget({
         dataset: userDataset(ctx.clerkId),
         query: args.topic as string,
@@ -306,6 +338,48 @@ async function executeTool(
       });
       const emails = await fetchEmails(ctx.clerkId, 10);
       return JSON.stringify({ campaigns, recentEmails: emails });
+    }
+
+    case "importProfileData": {
+      await remember(
+        `Full profile (user-provided):\n${args.content as string}`,
+        { dataset: userDataset(ctx.clerkId), token: ctx.cogneeToken }
+      );
+      return JSON.stringify({
+        success: true,
+        message: "Profile data stored in memory — will be used for future context",
+      });
+    }
+
+    case "resyncLinkedIn": {
+      const freshProfile = await getLinkedInProfileWithRetry(ctx.clerkId);
+      if (!freshProfile) {
+        return JSON.stringify({ error: "LinkedIn not connected or sync failed" });
+      }
+
+      await prisma.userProfile.updateMany({
+        where: { userId: ctx.userId },
+        data: {
+          headline: (freshProfile.localizedHeadline as string) ?? undefined,
+          linkedinData: freshProfile as object,
+        },
+      });
+
+      await ingestUserProfile(ctx.clerkId, freshProfile, ctx.cogneeToken);
+
+      const sections = [];
+      if (freshProfile.experience) sections.push("experience");
+      if (freshProfile.education) sections.push("education");
+      if (freshProfile.skills) sections.push("skills");
+      if (freshProfile.certifications) sections.push("certifications");
+      if (freshProfile.activity) sections.push("activity");
+      if (freshProfile.about) sections.push("about");
+
+      return JSON.stringify({
+        success: true,
+        sectionsIngested: sections,
+        message: `Profile re-synced with: ${sections.join(", ") || "basic info only"}`,
+      });
     }
 
     default:
@@ -335,17 +409,7 @@ export async function* runAgent(
     include: { profile: true },
   });
 
-  const userContext = await recall(
-    "user profile preferences job search goals",
-    { datasets: [userDataset(ctx.clerkId)], token: ctx.cogneeToken, topK: 5 }
-  );
-
-  const profilePrefix = buildProfileContext(dbUser, dbUser?.profile);
-  const memoryPrefix =
-    userContext.length > 0
-      ? `[Memory context: ${userContext.map((r) => r.content).join("; ")}]\n\n`
-      : "";
-  const contextPrefix = profilePrefix + memoryPrefix;
+  const contextPrefix = buildProfileContext(dbUser, dbUser?.profile);
 
   const chat = model.startChat({
     history: history.map((h) => ({
@@ -384,11 +448,6 @@ export async function* runAgent(
 
   const text = response.text();
   if (text) yield text;
-
-  await remember(`User said: ${message}\nAssistant: ${text}`, {
-    dataset: userDataset(ctx.clerkId),
-    token: ctx.cogneeToken,
-  });
 }
 
 export { getPipelineStatus };
