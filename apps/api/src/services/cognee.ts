@@ -34,7 +34,9 @@ async function cogneeFetch(
   const authToken = token ?? config.cogneeServiceToken;
   if (authToken) {
     headers["X-Api-Key"] = authToken;
-    headers.Authorization = `Bearer ${authToken}`;
+  }
+  if (config.cogneeTenantId) {
+    headers["X-Tenant-Id"] = config.cogneeTenantId;
   }
 
   const response = await fetch(`${config.cogneeApiUrl}${path}`, {
@@ -95,8 +97,14 @@ export async function initCognee(): Promise<void> {
   }
 
   try {
+    const healthHeaders: Record<string, string> = {
+      "X-Api-Key": config.cogneeServiceToken,
+    };
+    if (config.cogneeTenantId) {
+      healthHeaders["X-Tenant-Id"] = config.cogneeTenantId;
+    }
     const health = await fetch(`${config.cogneeApiUrl}/health`, {
-      headers: { "X-Api-Key": config.cogneeServiceToken },
+      headers: healthHeaders,
     });
     if (!health.ok) {
       console.warn(`Cognee API unreachable at ${config.cogneeApiUrl} (${health.status})`);
@@ -116,24 +124,12 @@ async function ensureReady(): Promise<boolean> {
   return ready;
 }
 
-export async function provisionCogneeUser(clerkId: string, email?: string) {
+export async function provisionCogneeUser(clerkId: string, _email?: string) {
   if (!(await ensureReady())) {
     return { id: clerkId, token: undefined };
   }
 
-  try {
-    const result = await cogneeFetch("/api/v1/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: email ?? `${clerkId}@outpitch.local`,
-        username: clerkId,
-      }),
-    });
-    return result as { id: string; token?: string };
-  } catch {
-    return { id: clerkId, token: config.cogneeServiceToken };
-  }
+  return { id: clerkId, token: config.cogneeServiceToken };
 }
 
 export async function remember(

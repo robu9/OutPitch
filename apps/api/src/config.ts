@@ -9,6 +9,7 @@ export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
   cogneeApiUrl: process.env.COGNEE_API_URL ?? "https://api.cognee.ai",
   cogneeServiceToken: process.env.COGNEE_SERVICE_TOKEN ?? process.env.COGNEE_API_KEY ?? "",
+  cogneeTenantId: process.env.COGNEE_TENANT_ID ?? "",
   composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
   serpApiKey: process.env.SERPAPI_KEY ?? "",
   apolloApiKey: process.env.APOLLO_API_KEY ?? "",
