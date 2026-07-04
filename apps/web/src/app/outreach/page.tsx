@@ -74,7 +74,7 @@ export default function OutreachPage() {
               </div>
               <div>
                 <span className="text-[#888888]">DISPATCHED: </span>
-                <strong className="text-[#3b82f6] tabular-nums">{sent}</strong>
+                <strong className="text-accent tabular-nums">{sent}</strong>
               </div>
               <div>
                 <span className="text-[#888888]">REPLIES: </span>
@@ -99,7 +99,7 @@ export default function OutreachPage() {
               action={
                 <Link href="/chat">
                   <Button variant="terminal" size="md" className="h-9 px-4 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]">
-                    <Terminal className="h-3.5 w-3.5 text-[#3b82f6] mr-1" />
+                    <Terminal className="h-3.5 w-3.5 text-accent mr-1" />
                     Draft Outreach in Chat
                   </Button>
                 </Link>
@@ -114,7 +114,7 @@ export default function OutreachPage() {
                   <span className="text-white font-bold">DISPATCH PIPELINE HEALTH: 100% OPERATIONAL</span>
                 </div>
                 <div className="flex items-center gap-2 text-[#888888]">
-                  <ShieldCheck className="h-4 w-4 text-[#3b82f6]" />
+                  <ShieldCheck className="h-4 w-4 text-accent" />
                   <span>COMPOSIO OAUTH 2.0 VERIFIED SENDING</span>
                 </div>
               </div>
@@ -139,7 +139,7 @@ export default function OutreachPage() {
                       {/* Timestamp & Status Badge */}
                       <div className="col-span-3 space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <StatusIcon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
+                          <StatusIcon className="h-3.5 w-3.5 text-accent shrink-0" />
                           <Badge variant={config.variant}>{config.label}</Badge>
                         </div>
                         <div className="text-[11px] text-[#888888] tabular-nums">
@@ -159,7 +159,7 @@ export default function OutreachPage() {
                         <div className="text-[#888888] truncate">
                           @{campaign.company.name}
                           {campaign.contact?.email && (
-                            <span className="text-[#3b82f6] ml-1">({campaign.contact.email})</span>
+                            <span className="text-accent ml-1">({campaign.contact.email})</span>
                           )}
                         </div>
                       </div>

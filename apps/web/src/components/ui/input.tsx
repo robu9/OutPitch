@@ -6,7 +6,7 @@ export const Input = forwardRef<
 >(({ className = "", ...props }, ref) => (
   <input
     ref={ref}
-    className={`h-9 w-full rounded-md border border-[#1f1f1f] bg-[#080808] px-3 text-sm text-white placeholder:text-[#888888] transition-colors duration-150 focus-visible:border-[#3b82f6] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    className={`h-9 w-full rounded-md border border-border bg-[#080808] px-3 text-sm text-white placeholder:text-muted-foreground transition-colors duration-150 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     {...props}
   />
 ));
@@ -18,7 +18,7 @@ export const Textarea = forwardRef<
 >(({ className = "", ...props }, ref) => (
   <textarea
     ref={ref}
-    className={`w-full rounded-md border border-[#1f1f1f] bg-[#080808] px-3 py-2 text-sm text-white placeholder:text-[#888888] transition-colors duration-150 focus-visible:border-[#3b82f6] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50 resize-y min-h-[88px] ${className}`}
+    className={`w-full rounded-md border border-border bg-[#080808] px-3 py-2 text-sm text-white placeholder:text-muted-foreground transition-colors duration-150 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 resize-y min-h-[88px] ${className}`}
     {...props}
   />
 ));

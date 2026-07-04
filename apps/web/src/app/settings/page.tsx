@@ -204,7 +204,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between mb-4">
               <h2
                 id="connections-heading"
-                className="text-xs font-mono font-bold uppercase tracking-widest text-[#3b82f6] flex items-center gap-2"
+                className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2"
               >
                 <Terminal className="h-3.5 w-3.5" />
                 SECTION 01 // COMPOSIO OAUTH INTEGRATIONS
@@ -251,7 +251,7 @@ export default function SettingsPage() {
                           }}
                           disabled={loading !== null}
                         >
-                          {loading && <Spinner className="h-3 w-3 text-[#3b82f6] mr-1" />}
+                          {loading && <Spinner className="h-3 w-3 text-accent mr-1" />}
                           Re-authenticate
                         </Button>
                       ) : (
@@ -263,9 +263,9 @@ export default function SettingsPage() {
                           disabled={loading !== null}
                         >
                           {loading === "linkedin-sync" ? (
-                            <Spinner className="h-3 w-3 text-[#3b82f6] mr-1" />
+                            <Spinner className="h-3 w-3 text-accent mr-1" />
                           ) : (
-                            <RefreshCw className="h-3 w-3 mr-1 text-[#3b82f6]" aria-hidden />
+                            <RefreshCw className="h-3 w-3 mr-1 text-accent" aria-hidden />
                           )}
                           Sync Graph
                         </Button>
@@ -345,7 +345,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between mb-4">
               <h2
                 id="memory-heading"
-                className="text-xs font-mono font-bold uppercase tracking-widest text-[#3b82f6] flex items-center gap-2"
+                className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2"
               >
                 <Brain className="h-3.5 w-3.5" />
                 SECTION 02 // COGNEE PERSISTENT MEMORY GRAPH
@@ -358,7 +358,7 @@ export default function SettingsPage() {
 
               <div className="flex flex-col md:flex-row md:items-start gap-6 relative z-10">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#111111] text-white">
-                  <Database className="h-6 w-6 text-[#3b82f6]" />
+                  <Database className="h-6 w-6 text-accent" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -414,7 +414,7 @@ function ConnectionRow({
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
             connected
-              ? "border-[#3b82f6]/40 bg-[#111111] text-[#3b82f6]"
+              ? "border-accent/40 bg-surface text-accent"
               : "border-[#1f1f1f] bg-[#0c0c0c] text-[#888888]"
           }`}
         >

@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#050505] text-white selection:bg-[#3b82f6] selection:text-white">
+    <div className="flex min-h-screen bg-background text-foreground selection:bg-accent selection:text-accent-foreground">
       <aside
         className={`sticky top-0 flex h-screen flex-col border-r border-[#1f1f1f] bg-[#0b0b0b] transition-[width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           collapsed ? "w-[60px]" : "w-[240px]"
@@ -81,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-[#10b981] font-bold">ONLINE</span>
             </div>
             <div className="flex items-center gap-1.5 text-white">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#3b82f6] animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
               <span>MEMORY COMPOUNDING</span>
             </div>
           </div>
@@ -104,12 +104,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     title={collapsed ? label : undefined}
                     className={`flex items-center justify-between rounded px-3 py-2.5 text-xs font-mono transition-all duration-150 ${
                       active
-                        ? "bg-[#161616] text-white border-l-2 border-l-[#3b82f6] font-bold shadow-sm"
-                        : "text-[#888888] hover:bg-[#111111] hover:text-white border-l-2 border-l-transparent"
+                        ? "bg-surface-hover text-white border border-accent/40 font-bold"
+                        : "text-muted-foreground hover:bg-surface hover:text-white border border-transparent"
                     } ${collapsed ? "justify-center px-2" : ""}`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon className={`h-4 w-4 shrink-0 ${active ? "text-[#3b82f6]" : ""}`} aria-hidden />
+                      <Icon className={`h-4 w-4 shrink-0 ${active ? "text-accent" : ""}`} aria-hidden />
                       {!collapsed && <span>{label.toUpperCase()}</span>}
                     </div>
                     {!collapsed && (
@@ -130,7 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           {!collapsed && (
             <div className="flex items-center gap-2 text-[11px] font-mono text-[#888888]">
-              <Cpu className="h-3.5 w-3.5 text-[#3b82f6]" />
+              <Cpu className="h-3.5 w-3.5 text-accent" />
               <span>v2.4 // GEMINI 3</span>
             </div>
           )}

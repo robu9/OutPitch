@@ -116,7 +116,7 @@ export default function CompaniesPage() {
               action={
                 <Link href="/chat">
                   <Button variant="terminal" size="md" className="h-9 px-4 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]">
-                    <Terminal className="h-3.5 w-3.5 text-[#3b82f6] mr-1" />
+                    <Terminal className="h-3.5 w-3.5 text-accent mr-1" />
                     Launch Discovery Command
                   </Button>
                 </Link>
@@ -156,7 +156,7 @@ export default function CompaniesPage() {
                             aria-label={isOpen ? "Collapse decision makers" : "Expand decision makers"}
                           >
                             {isOpen ? (
-                              <ChevronDown className="h-4 w-4 text-[#3b82f6]" />
+                              <ChevronDown className="h-4 w-4 text-accent" />
                             ) : (
                               <ChevronRight className="h-4 w-4" />
                             )}
@@ -169,7 +169,7 @@ export default function CompaniesPage() {
                                 href={`https://${company.domain}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs font-mono text-[#888888] hover:text-[#3b82f6] transition-colors"
+                                className="inline-flex items-center gap-1 text-xs font-mono text-[#888888] hover:text-accent transition-colors"
                               >
                                 {company.domain}
                                 <ExternalLink className="h-3 w-3" aria-hidden />
@@ -195,7 +195,7 @@ export default function CompaniesPage() {
                         <div className="col-span-2 font-mono text-xs">
                           {hasContacts ? (
                             <span className="text-white font-medium flex items-center gap-1.5">
-                              <Database className="h-3.5 w-3.5 text-[#3b82f6]" />
+                              <Database className="h-3.5 w-3.5 text-accent" />
                               {company.contacts.length} Enriched
                             </span>
                           ) : (
@@ -260,7 +260,7 @@ export default function CompaniesPage() {
                                 </div>
                                 <div className="flex items-center gap-4 text-xs">
                                   {contact.email && (
-                                    <span className="inline-flex items-center gap-1.5 text-[#3b82f6]">
+                                    <span className="inline-flex items-center gap-1.5 text-accent">
                                       <Mail className="h-3.5 w-3.5" aria-hidden />
                                       {contact.email}
                                     </span>

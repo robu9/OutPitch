@@ -12,7 +12,7 @@ import { MarketingFooter } from "@/components/landing/marketing-footer";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#3b82f6] selection:text-white">
+    <div className="min-h-screen bg-background text-foreground selection:bg-accent selection:text-accent-foreground">
       <MarketingNav />
       <main className="relative">
         <Hero />

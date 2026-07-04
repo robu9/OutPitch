@@ -106,7 +106,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#3b82f6] selection:text-white">
+    <div className="min-h-screen bg-background text-foreground selection:bg-accent selection:text-accent-foreground">
       {/* Monospaced Terminal Header */}
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[#1f1f1f] bg-[#050505]/90 backdrop-blur px-6 font-mono text-xs">
         <Logo size="sm" />
@@ -123,7 +123,7 @@ export default function OnboardingPage() {
           {/* Terminal Title Bar */}
           <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-4 mb-8 text-xs font-mono text-[#888888]">
             <div className="flex items-center gap-2">
-              <Terminal className="h-4 w-4 text-[#3b82f6]" />
+              <Terminal className="h-4 w-4 text-accent" />
               <span>outpitch-init --config</span>
             </div>
             <Badge variant="primary">STEP {step} OF 3</Badge>
@@ -142,7 +142,7 @@ export default function OnboardingPage() {
               <div key={s.id} className="space-y-1.5">
                 <div
                   className={`h-1.5 rounded-full transition-all duration-300 ${
-                    step >= s.id ? "bg-[#3b82f6] shadow-[0_0_8px_rgba(59,130,246,0.6)]" : "bg-[#1f1f1f]"
+                    step >= s.id ? "bg-accent shadow-[0_0_8px_var(--accent-glow)]" : "bg-border"
                   }`}
                 />
                 <div className={step >= s.id ? "text-white font-bold" : ""}>{s.label}</div>
@@ -178,7 +178,7 @@ export default function OnboardingPage() {
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded bg-[#0c0c0c] text-white">
-                    <Linkedin className="h-5 w-5 text-[#3b82f6]" />
+                    <Linkedin className="h-5 w-5 text-accent" />
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-white">LinkedIn Graph</div>
@@ -245,7 +245,7 @@ export default function OnboardingPage() {
                   value={form.targetRole}
                   onChange={(e) => setForm({ ...form, targetRole: e.target.value })}
                   placeholder="e.g. Staff Frontend Engineer / Tech Lead"
-                  className="w-full h-11 rounded border border-[#2a2a2a] bg-[#111111] px-3.5 text-white placeholder:text-[#888888] focus:border-[#3b82f6] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                  className="w-full h-11 rounded border border-[#2a2a2a] bg-[#111111] px-3.5 text-white placeholder:text-[#888888] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
 
@@ -258,7 +258,7 @@ export default function OnboardingPage() {
                   value={form.targetLocation}
                   onChange={(e) => setForm({ ...form, targetLocation: e.target.value })}
                   placeholder="e.g. San Francisco, CA / Remote US"
-                  className="w-full h-11 rounded border border-[#2a2a2a] bg-[#111111] px-3.5 text-white placeholder:text-[#888888] focus:border-[#3b82f6] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                  className="w-full h-11 rounded border border-[#2a2a2a] bg-[#111111] px-3.5 text-white placeholder:text-[#888888] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
 
@@ -271,7 +271,7 @@ export default function OnboardingPage() {
                   value={form.targetIndustries}
                   onChange={(e) => setForm({ ...form, targetIndustries: e.target.value })}
                   placeholder="e.g. Generative AI, Developer Tools, Rust, Next.js"
-                  className="w-full h-11 rounded border border-[#2a2a2a] bg-[#111111] px-3.5 text-white placeholder:text-[#888888] focus:border-[#3b82f6] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                  className="w-full h-11 rounded border border-[#2a2a2a] bg-[#111111] px-3.5 text-white placeholder:text-[#888888] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
 
@@ -285,7 +285,7 @@ export default function OnboardingPage() {
                   onChange={(e) => setForm({ ...form, summary: e.target.value })}
                   placeholder="Brief summary of your architectural achievements, latency optimizations, or leadership experience..."
                   rows={4}
-                  className="w-full rounded border border-[#2a2a2a] bg-[#111111] p-3.5 text-white placeholder:text-[#888888] focus:border-[#3b82f6] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                  className="w-full rounded border border-[#2a2a2a] bg-[#111111] p-3.5 text-white placeholder:text-[#888888] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
 
@@ -311,7 +311,7 @@ export default function OnboardingPage() {
               <div className="rounded-xl border border-[#2a2a2a] bg-[#111111] p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-3">
                   <div className="flex items-center gap-2 text-white font-bold">
-                    <Cpu className="h-4 w-4 text-[#3b82f6]" />
+                    <Cpu className="h-4 w-4 text-accent" />
                     <span>COGNEE GRAPH INITIALIZED</span>
                   </div>
                   <Badge variant="success">READY FOR DEPLOYMENT</Badge>

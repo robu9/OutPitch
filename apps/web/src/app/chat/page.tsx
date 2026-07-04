@@ -134,7 +134,7 @@ export default function ChatPage() {
           <div className="mx-auto max-w-4xl px-5 py-8">
             {!historyLoaded ? (
               <div className="flex flex-col items-center justify-center py-24 text-xs font-mono text-[#888888] gap-3">
-                <Spinner className="h-5 w-5 text-[#3b82f6]" />
+                <Spinner className="h-5 w-5 text-accent" />
                 <span>INITIALIZING WORKSTATION &amp; SYNCING COGNEE GRAPH...</span>
               </div>
             ) : messages.length === 0 ? (
@@ -144,7 +144,7 @@ export default function ChatPage() {
 
                   <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-4 mb-6">
                     <div className="flex items-center gap-2 text-xs font-mono text-[#888888]">
-                      <Terminal className="h-4 w-4 text-[#3b82f6]" />
+                      <Terminal className="h-4 w-4 text-accent" />
                       <span>outpitch-cli // workstation-init</span>
                     </div>
                     <Badge variant="success">READY FOR COMMANDS</Badge>
@@ -169,10 +169,10 @@ export default function ChatPage() {
                           setInput(s);
                           inputRef.current?.focus();
                         }}
-                        className="flex items-center justify-between w-full rounded border border-[#1f1f1f] bg-[#111111] p-3 text-left text-white transition-all duration-150 hover:border-[#3b82f6] hover:bg-[#161616] group"
+                        className="flex items-center justify-between w-full rounded border border-[#1f1f1f] bg-[#111111] p-3 text-left text-white transition-all duration-150 hover:border-accent hover:bg-[#161616] group"
                       >
                         <div className="flex items-center gap-2.5 truncate">
-                          <span className="text-[#3b82f6] font-bold">&gt;</span>
+                          <span className="text-accent font-bold">&gt;</span>
                           <span className="truncate">{s}</span>
                         </div>
                         <span className="text-[10px] text-[#888888] group-hover:text-white shrink-0 ml-2">[EXECUTE]</span>
@@ -189,7 +189,7 @@ export default function ChatPage() {
                       <div className="w-full rounded-lg border border-[#1f1f1f] bg-[#080808] p-5 shadow-lg font-mono text-xs sm:text-sm">
                         <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-3 mb-3 text-[11px] text-[#888888]">
                           <div className="flex items-center gap-2">
-                            <Cpu className="h-3.5 w-3.5 text-[#3b82f6]" />
+                            <Cpu className="h-3.5 w-3.5 text-accent" />
                             <span className="text-white font-bold">OUTPITCH AGENT</span>
                             <span>|</span>
                             <span>MODEL: GEMINI 3 PRO</span>
@@ -199,7 +199,7 @@ export default function ChatPage() {
                         <div className="text-[#d4d4d4] leading-relaxed whitespace-pre-wrap font-sans">
                           {msg.content || (
                             <span className="inline-flex items-center gap-2 text-[#888888] font-mono">
-                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#3b82f6]" />
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-accent" />
                               Computing reasoning &amp; querying graph...
                             </span>
                           )}
@@ -222,8 +222,8 @@ export default function ChatPage() {
         {/* Workstation Command Input Bar */}
         <div className="shrink-0 border-t border-[#1f1f1f] bg-[#0b0b0b] p-4">
           <form onSubmit={handleSend} className="mx-auto flex max-w-4xl items-end gap-3">
-            <div className="flex-1 rounded-md border border-[#1f1f1f] bg-[#080808] px-3.5 py-2.5 flex items-center gap-2.5 focus-within:border-[#3b82f6] focus-within:ring-1 focus-within:ring-[#3b82f6]">
-              <span className="text-[#3b82f6] font-mono font-bold text-sm">&gt;</span>
+            <div className="flex-1 rounded-md border border-[#1f1f1f] bg-[#080808] px-3.5 py-2.5 flex items-center gap-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+              <span className="text-accent font-mono font-bold text-sm">&gt;</span>
               <textarea
                 ref={inputRef}
                 value={input}
@@ -243,10 +243,10 @@ export default function ChatPage() {
               className="h-10 px-5 text-xs font-mono bg-[#161616] hover:bg-[#2a2a2a] text-white shrink-0"
             >
               {streaming ? (
-                <Spinner className="h-4 w-4 text-[#3b82f6]" />
+                <Spinner className="h-4 w-4 text-accent" />
               ) : (
                 <>
-                  <Send className="h-3.5 w-3.5 text-[#3b82f6]" />
+                  <Send className="h-3.5 w-3.5 text-accent" />
                   Execute
                 </>
               )}

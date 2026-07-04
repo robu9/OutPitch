@@ -1,42 +1,41 @@
 @import "tailwindcss";
 
-/* ── Outpitch Flagship Design System — Built from First Principles ── */
-/* Strict Monochrome: #050505 Primary Bg, #0B0B0B Secondary Bg, #111111 Surface, #3B82F6 Blue Accent */
+/* ── Outpitch — dark workstation, coral signal accent ── */
 
 :root,
 .dark {
-  --background: #050505;
-  --background-secondary: #0b0b0b;
-  --surface: #111111;
-  --surface-hover: #161616;
-  --surface-raised: #1a1a1a;
-  --overlay: rgba(5, 5, 5, 0.85);
+  --background: oklch(0.08 0.008 280);
+  --background-secondary: oklch(0.11 0.008 280);
+  --surface: oklch(0.14 0.01 280);
+  --surface-hover: oklch(0.17 0.01 280);
+  --surface-raised: oklch(0.19 0.012 280);
+  --overlay: oklch(0.08 0.008 280 / 0.85);
   
-  --foreground: #ffffff;
-  --muted: #1a1a1a;
-  --muted-foreground: #888888;
-  --subtle: #b0b0b0;
+  --foreground: oklch(0.98 0.005 280);
+  --muted: oklch(0.14 0.01 280);
+  --muted-foreground: oklch(0.62 0.015 280);
+  --subtle: oklch(0.78 0.012 280);
   
-  --border: #1f1f1f;
-  --border-strong: #2a2a2a;
-  --border-focus: #444444;
+  --border: oklch(0.22 0.012 280);
+  --border-strong: oklch(0.28 0.014 280);
+  --border-focus: oklch(0.38 0.016 280);
   
-  --primary: #ffffff;
-  --primary-hover: #e0e0e0;
-  --primary-foreground: #000000;
+  --primary: oklch(0.98 0.005 280);
+  --primary-hover: oklch(0.9 0.008 280);
+  --primary-foreground: oklch(0.08 0.008 280);
   
-  --accent: #3b82f6;
-  --accent-foreground: #ffffff;
-  --accent-subtle: rgba(59, 130, 246, 0.12);
-  --accent-glow: rgba(59, 130, 246, 0.25);
+  --accent: oklch(0.72 0.2 35);
+  --accent-foreground: oklch(0.12 0.02 35);
+  --accent-subtle: oklch(0.72 0.2 35 / 0.14);
+  --accent-glow: oklch(0.72 0.2 35 / 0.28);
   
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --success: #10b981;
-  --success-foreground: #ffffff;
-  --warning: #f59e0b;
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0.005 280);
+  --success: oklch(0.72 0.17 155);
+  --success-foreground: oklch(0.12 0.02 155);
+  --warning: oklch(0.78 0.15 75);
   
-  --ring: #3b82f6;
+  --ring: oklch(0.72 0.2 35);
   --nav: rgba(5, 5, 5, 0.8);
   --sidebar: #0b0b0b;
   --sidebar-foreground: #888888;
