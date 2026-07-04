@@ -24,7 +24,13 @@ const navItems = [
   { href: "/settings", label: "Matrix", icon: Settings, shortcut: "⌘4" },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  sidebar,
+}: {
+  children: React.ReactNode;
+  sidebar?: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -88,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Navigation Links */}
-        <nav className="flex-1 p-3" aria-label="Workstation navigation">
+        <nav className="p-3" aria-label="Workstation navigation">
           {!collapsed && (
             <div className="mb-2 px-2 text-[10px] font-mono uppercase tracking-widest text-[#888888]">
               NAVIGATION COMMANDS
@@ -121,6 +127,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </ul>
         </nav>
+
+        {/* Extra sidebar content (e.g. chat history), rendered below nav */}
+        {sidebar && !collapsed ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-[#1f1f1f]">
+            {sidebar}
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
 
         {/* Sidebar Footer */}
         <div

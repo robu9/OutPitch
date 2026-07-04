@@ -5,7 +5,7 @@ import {
   extractPersonId,
   normalizeLinkedInProfileFields,
 } from "./linkedin-profile.js";
-import { scrapeLinkedInProfile } from "./linkedin-scraper.js";
+import { scrapeLinkedInViaApify } from "./apify.js";
 
 let composioClient: Composio | null = null;
 
@@ -247,7 +247,7 @@ export async function getLinkedInProfile(userId: string) {
       ((profile.personProfile as Record<string, unknown>)?.vanityName as string);
     if (vanityName) {
       try {
-        const scraped = await scrapeLinkedInProfile(vanityName);
+        const scraped = await scrapeLinkedInViaApify(vanityName);
         if (scraped) {
           profile.scraped = scraped;
           if (scraped.location && !profile.location) profile.location = scraped.location;

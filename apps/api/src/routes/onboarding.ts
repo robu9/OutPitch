@@ -120,6 +120,8 @@ router.get(
       gmailConnected: connections.gmail,
       linkedinProfileSynced: Boolean(user?.profile?.linkedinData),
       linkedinSyncing: linkedInSyncInFlight.has(req.auth!.clerkId),
+      whatsappNumber: user?.whatsappNumber ?? null,
+      whatsappVerified: user?.whatsappVerified ?? false,
       profile: user?.profile,
       ...(synced ? { linkedinJustSynced: true } : {}),
     });

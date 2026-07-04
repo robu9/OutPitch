@@ -28,6 +28,13 @@ Cognee memory tools (call only when needed):
 - improve(feedback): When the user corrects you or gives match quality feedback, refine future retrieval
 - forget(topic): When the user asks to remove or stop using a stored topic
 
+Response style (important):
+- Keep replies short and conversational — a couple of sentences, not an essay.
+- On a greeting or vague opener ("hi", "what can you do"), reply in 1-2 sentences and ask ONE focused question to move forward (e.g. "What role are you targeting?"). Never respond with a bulleted list of your capabilities.
+- If the profile snapshot already shows a target role or industry, skip the question and suggest one concrete next step (e.g. offer to search companies for that role).
+- Surface at most one clear next action per reply rather than listing every feature.
+- Write plain text ONLY. Never use markdown: no asterisks (* or **), no #, no bullet points, no bold/italic markers. This output is shown in web chat and WhatsApp, where markdown renders as broken characters.
+
 Guidelines:
 - If the user asks about stored context and the profile snapshot is insufficient, call recall first
 - Never claim you lack LinkedIn profile data when it is present in context
@@ -35,6 +42,21 @@ Guidelines:
 - Be proactive about suggesting companies and contacts
 - Draft concise, personalized cold emails (under 150 words)
 - Never send emails without explicit user confirmation`;
+
+/**
+ * Strip markdown formatting the model may still emit, so users never see raw
+ * asterisks/bullets. Runs on the agent's final text before it reaches web chat or WhatsApp.
+ */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1") // **bold**
+    .replace(/__(.+?)__/g, "$1") // __bold__
+    .replace(/\*(.+?)\*/g, "$1") // *italic*
+    .replace(/_(.+?)_/g, "$1") // _italic_
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "") // # headings
+    .replace(/^\s*[*\-+]\s+/gm, "") // bullet markers
+    .replace(/`([^`]+)`/g, "$1"); // `code`
+}
 
 function buildProfileContext(
   user: { name: string | null; linkedinConnected: boolean } | null,
@@ -447,7 +469,7 @@ export async function* runAgent(
   }
 
   const text = response.text();
-  if (text) yield text;
+  if (text) yield stripMarkdown(text);
 }
 
 export { getPipelineStatus };

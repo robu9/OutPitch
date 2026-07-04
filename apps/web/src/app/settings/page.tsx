@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Cpu,
   Database,
+  MessageCircle,
 } from "lucide-react";
 
 type ConnectionStatus = {
@@ -29,6 +30,8 @@ type ConnectionStatus = {
   gmailConnected: boolean;
   linkedinProfileSynced?: boolean;
   linkedinSyncing?: boolean;
+  whatsappNumber?: string | null;
+  whatsappVerified?: boolean;
   onboardingDone: boolean;
 };
 
@@ -44,6 +47,8 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [whatsappCode, setWhatsappCode] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     if (!user) return null;
@@ -172,6 +177,25 @@ export default function SettingsPage() {
       await loadStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disconnect Gmail");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function linkWhatsApp() {
+    if (!user || !whatsappInput.trim()) return;
+    setLoading("whatsapp-link");
+    setError(null);
+    try {
+      const { code } = await apiFetch<{ code: string }>("/api/whatsapp/link", {
+        method: "POST",
+        clerkUserId: user.id,
+        body: JSON.stringify({ number: whatsappInput.trim() }),
+      });
+      setWhatsappCode(code);
+      await loadStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to link WhatsApp");
     } finally {
       setLoading(null);
     }
@@ -340,7 +364,81 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* SECTION 2: COGNEE PERSISTENT GRAPH */}
+          {/* SECTION 2: WHATSAPP AGENT ACCESS */}
+          <section className="mt-12" aria-labelledby="whatsapp-heading">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                id="whatsapp-heading"
+                className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                SECTION 02 // WHATSAPP AGENT ACCESS
+              </h2>
+              <Badge variant={status.whatsappVerified ? "success" : "muted"}>
+                {status.whatsappVerified ? "CHANNEL LINKED" : "NOT LINKED"}
+              </Badge>
+            </div>
+
+            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] p-6 sm:p-8 shadow-xl">
+              <div className="flex flex-col md:flex-row md:items-start gap-6">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#111111] text-white">
+                  <MessageCircle className="h-6 w-6 text-accent" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-base font-semibold text-white">
+                      Chat with Outpitch on WhatsApp
+                    </h3>
+                    {status.whatsappVerified && (
+                      <Badge variant="success">
+                        {status.whatsappNumber ?? "VERIFIED"}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs leading-relaxed text-[#888888] font-mono text-pretty">
+                    Link your WhatsApp number to run company searches, draft and send
+                    outreach, and refresh your LinkedIn profile — the full agent, from
+                    your phone. Enter your number, then text the 6-digit code we give you
+                    to the Outpitch business number.
+                  </p>
+
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      value={whatsappInput}
+                      onChange={(e) => setWhatsappInput(e.target.value)}
+                      placeholder="+1 555 123 4567"
+                      className="flex-1 rounded-md border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-xs font-mono text-white placeholder:text-[#555] focus:border-accent focus:outline-none"
+                    />
+                    <Button
+                      size="sm"
+                      variant="terminal"
+                      className="h-9 text-xs font-mono bg-white text-black hover:bg-[#e0e0e0] font-bold"
+                      onClick={linkWhatsApp}
+                      disabled={loading !== null || !whatsappInput.trim()}
+                    >
+                      {loading === "whatsapp-link" && (
+                        <Spinner className="h-3 w-3 mr-1" />
+                      )}
+                      {status.whatsappVerified ? "Re-link Number" : "Link WhatsApp"}
+                    </Button>
+                  </div>
+
+                  {whatsappCode && !status.whatsappVerified && (
+                    <div className="mt-4 rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-xs font-mono text-white">
+                      Text this code from WhatsApp to finish linking:{" "}
+                      <span className="font-bold tracking-widest text-accent">
+                        {whatsappCode}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* SECTION 3: COGNEE PERSISTENT GRAPH */}
           <section className="mt-12" aria-labelledby="memory-heading">
             <div className="flex items-center justify-between mb-4">
               <h2
@@ -348,7 +446,7 @@ export default function SettingsPage() {
                 className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2"
               >
                 <Brain className="h-3.5 w-3.5" />
-                SECTION 02 // COGNEE PERSISTENT MEMORY GRAPH
+                SECTION 03 // COGNEE PERSISTENT MEMORY GRAPH
               </h2>
               <Badge variant="primary" pulse>NEURAL STORAGE ACTIVE</Badge>
             </div>

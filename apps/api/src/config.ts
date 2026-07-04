@@ -13,6 +13,13 @@ export const config = {
   composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
   serperApiKey: process.env.SERPER_API_KEY ?? "",
   apolloApiKey: (process.env.APOLLO_API_KEY ?? "").replace(/^["']|["']$/g, ""),
+  apifyApiToken: process.env.APIFY_API_TOKEN ?? "",
+  apifyLinkedInActor: process.env.APIFY_LINKEDIN_ACTOR ?? "harvestapi/linkedin-profile-scraper",
+  apifyProfileMode: process.env.APIFY_PROFILE_MODE ?? "Profile details no email ($4 per 1k)",
+  whatsappToken: process.env.WHATSAPP_TOKEN ?? "",
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
+  whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? "",
+  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET ?? "",
   emailVerifierHeloDomain: process.env.EMAIL_VERIFIER_HELO_DOMAIN ?? "outpitch.app",
   emailVerifierFromEmail: process.env.EMAIL_VERIFIER_FROM_EMAIL ?? "verify@outpitch.app",
   emailVerifierSmtpTimeoutMs: parseInt(process.env.EMAIL_VERIFIER_SMTP_TIMEOUT_MS ?? "8000", 10),
@@ -30,6 +37,14 @@ function validateConfig() {
 
   if (!config.composioApiKey) {
     console.warn("Warning: COMPOSIO_API_KEY is not set — LinkedIn/Gmail connect will fail");
+  }
+
+  if (!config.apifyApiToken) {
+    console.warn("Warning: APIFY_API_TOKEN is not set — LinkedIn deep profile scrape disabled");
+  }
+
+  if (!config.whatsappToken || !config.whatsappPhoneNumberId) {
+    console.warn("Warning: WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID not set — WhatsApp access disabled");
   }
 }
 
