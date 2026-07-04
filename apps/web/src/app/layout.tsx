@@ -1,24 +1,33 @@
+import { Inter } from "next/font/google";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Outpitch — AI Job Outreach",
-  description: "Find companies, discover contacts, and land your dream job with AI-powered outreach",
+  title: "Outpitch — Job outreach with memory",
+  description:
+    "Discover companies hiring for your role, find decision-maker contacts, and send personalized outreach. Powered by Cognee memory.",
 };
 
 export const dynamic = "force-dynamic";
+
+const themeScript = `
+(function() {
+  try {
+    var t = localStorage.getItem('outpitch-theme') || 'system';
+    var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+  } catch (e) {}
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -29,10 +38,14 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${inter.variable} h-full antialiased`}
+        suppressHydrationWarning
       >
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        </head>
         <body className="min-h-full flex flex-col bg-background text-foreground">
-          {children}
+          <ThemeProvider>{children}</ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

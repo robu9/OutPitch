@@ -2,9 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/ui/page-header";
 import { apiFetch } from "@/lib/api";
-import { Building2, Mail, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoader } from "@/components/ui/spinner";
+import {
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Mail,
+  MessageSquare,
+  ThumbsDown,
+  ThumbsUp,
+  Terminal,
+  Database,
+  CheckCircle2,
+} from "lucide-react";
 
 interface Company {
   id: string;
@@ -26,6 +44,8 @@ export default function CompaniesPage() {
   const { user } = useUser();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, string>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -39,6 +59,7 @@ export default function CompaniesPage() {
 
   async function sendFeedback(companyId: string, rating: "good" | "bad") {
     if (!user) return;
+    setFeedbackSent((prev) => ({ ...prev, [companyId]: rating }));
     await apiFetch(`/api/companies/${companyId}/feedback`, {
       method: "POST",
       clerkUserId: user.id,
@@ -49,105 +70,215 @@ export default function CompaniesPage() {
     });
   }
 
+  function scoreVariant(score: number): "success" | "primary" | "warning" | "muted" {
+    if (score >= 80) return "success";
+    if (score >= 60) return "primary";
+    if (score >= 40) return "warning";
+    return "muted";
+  }
+
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+        <PageLoader />
       </AppShell>
     );
   }
 
   return (
     <AppShell>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-1">Discovered Companies</h1>
-        <p className="text-muted-foreground mb-8">
-          Companies found for your job search with contacts and match scores
-        </p>
+      <PageHeader
+        title="Discovered Pipeline"
+        description={
+          companies.length > 0
+            ? `${companies.length} active targets identified · ranked by Cognee neural match score`
+            : "Active hiring signals discovered by Serper and enriched via Apollo"
+        }
+        meta="PIPELINE // ACTIVE — SERPER + APOLLO ENRICHED"
+        action={
+          companies.length > 0 ? (
+            <div className="flex items-center gap-4 text-xs font-mono text-[#888888] bg-[#111111] px-3 py-1.5 rounded border border-[#1f1f1f]">
+              <span>TOTAL TARGETS: <strong className="text-white">{companies.length}</strong></span>
+              <span>•</span>
+              <span>ENRICHED EMAILS: <strong className="text-[#10b981]">{companies.reduce((acc, c) => acc + c.contacts.length, 0)}</strong></span>
+            </div>
+          ) : undefined
+        }
+      />
 
-        {companies.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-border rounded-xl">
-            <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              No companies yet. Ask the chat to find companies for your role.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {companies.map((company) => (
-              <div
-                key={company.id}
-                className="p-5 border border-border rounded-xl bg-card"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-lg">{company.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {company.domain}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                      {company.matchScore}% match
-                    </span>
-                    <button
-                      onClick={() => sendFeedback(company.id, "good")}
-                      className="p-1.5 hover:bg-muted rounded-lg"
-                    >
-                      <ThumbsUp className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => sendFeedback(company.id, "bad")}
-                      className="p-1.5 hover:bg-muted rounded-lg"
-                    >
-                      <ThumbsDown className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+      <div className="flex-1 overflow-y-auto bg-[#050505]">
+        <div className="mx-auto max-w-5xl px-5 py-8">
+          {companies.length === 0 ? (
+            <EmptyState
+              icon={Building2}
+              title="Pipeline empty // no targets discovered"
+              description="Execute a discovery command in the Workstation chat (e.g. 'outpitch discover --role Senior Frontend'). Outpitch will scan Serper hiring signals and enrich decision-maker emails automatically."
+              action={
+                <Link href="/chat">
+                  <Button variant="terminal" size="md" className="h-9 px-4 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]">
+                    <Terminal className="h-3.5 w-3.5 text-[#3b82f6] mr-1" />
+                    Launch Discovery Command
+                  </Button>
+                </Link>
+              }
+            />
+          ) : (
+            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] overflow-hidden shadow-2xl">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 border-b border-[#1f1f1f] bg-[#0d0d0d] px-5 py-3 text-xs font-mono font-bold text-[#888888]">
+                <div className="col-span-5">COMPANY &amp; HIRING SIGNAL</div>
+                <div className="col-span-3">COGNEE MATCH SCORE</div>
+                <div className="col-span-2">DECISION MAKERS</div>
+                <div className="col-span-2 text-right">COGNEE FEEDBACK</div>
+              </div>
 
-                {company.description && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {company.description}
-                  </p>
-                )}
+              <div className="divide-y divide-[#1f1f1f]">
+                {companies.map((company) => {
+                  const isOpen = expanded[company.id];
+                  const hasContacts = company.contacts?.length > 0;
 
-                {company.contacts?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Contacts
-                    </p>
-                    {company.contacts.map((contact) => (
-                      <div
-                        key={contact.id}
-                        className="flex items-center justify-between py-2 px-3 bg-muted rounded-lg"
-                      >
-                        <div>
-                          <p className="text-sm font-medium">{contact.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {contact.title}
-                          </p>
+                  return (
+                    <article key={company.id} className="transition-colors hover:bg-[#0c0c0c]">
+                      <div className="grid grid-cols-12 items-center px-5 py-4 gap-4">
+                        {/* Company & Domain */}
+                        <div className="col-span-5 flex items-start gap-3 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              hasContacts &&
+                              setExpanded((prev) => ({
+                                ...prev,
+                                [company.id]: !prev[company.id],
+                              }))
+                            }
+                            className={`mt-1 shrink-0 text-[#888888] ${hasContacts ? "hover:text-white" : "invisible"}`}
+                            aria-expanded={isOpen}
+                            aria-label={isOpen ? "Collapse decision makers" : "Expand decision makers"}
+                          >
+                            {isOpen ? (
+                              <ChevronDown className="h-4 w-4 text-[#3b82f6]" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-white truncate">{company.name}</span>
+                              <a
+                                href={`https://${company.domain}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-mono text-[#888888] hover:text-[#3b82f6] transition-colors"
+                              >
+                                {company.domain}
+                                <ExternalLink className="h-3 w-3" aria-hidden />
+                              </a>
+                            </div>
+                            {company.description && (
+                              <p className="mt-1 text-xs text-[#888888] line-clamp-1 font-mono text-pretty">
+                                {company.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          {contact.email && (
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <Mail className="w-3 h-3" />
-                              {contact.email}
+
+                        {/* Cognee Match Score */}
+                        <div className="col-span-3 flex items-center gap-2">
+                          <Badge variant={scoreVariant(company.matchScore)}>
+                            {company.matchScore}% FIT
+                          </Badge>
+                          <span className="text-[11px] font-mono text-[#888888] hidden md:inline">NEURAL GRAPH</span>
+                        </div>
+
+                        {/* Contacts Count */}
+                        <div className="col-span-2 font-mono text-xs">
+                          {hasContacts ? (
+                            <span className="text-white font-medium flex items-center gap-1.5">
+                              <Database className="h-3.5 w-3.5 text-[#3b82f6]" />
+                              {company.contacts.length} Enriched
                             </span>
+                          ) : (
+                            <span className="text-[#888888]">Pending Crawl</span>
                           )}
-                          <span className="px-1.5 py-0.5 bg-background rounded text-muted-foreground">
-                            {contact.confidence}%
-                          </span>
+                        </div>
+
+                        {/* Cognee Feedback Loop Buttons */}
+                        <div className="col-span-2 flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => sendFeedback(company.id, "good")}
+                            title="Good fit (Instructs Cognee to prioritize similar tech stacks)"
+                            className={`flex h-8 px-2.5 items-center gap-1.5 rounded text-xs font-mono transition-all duration-150 border ${
+                              feedbackSent[company.id] === "good"
+                                ? "bg-[#10b981]/20 border-[#10b981] text-[#10b981] font-bold"
+                                : "border-[#1f1f1f] bg-[#111111] text-[#888888] hover:border-[#2a2a2a] hover:text-white"
+                            }`}
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                            <span className="hidden lg:inline">Good Fit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => sendFeedback(company.id, "bad")}
+                            title="Not a fit (Instructs Cognee to filter out similar companies)"
+                            className={`flex h-8 px-2.5 items-center gap-1.5 rounded text-xs font-mono transition-all duration-150 border ${
+                              feedbackSent[company.id] === "bad"
+                                ? "bg-[#ef4444]/20 border-[#ef4444] text-[#ef4444] font-bold"
+                                : "border-[#1f1f1f] bg-[#111111] text-[#888888] hover:border-[#2a2a2a] hover:text-white"
+                            }`}
+                          >
+                            <ThumbsDown className="h-3.5 w-3.5" />
+                            <span className="hidden lg:inline">Exclude</span>
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+
+                      {/* Expandable Enriched Decision Makers Drawer */}
+                      {isOpen && hasContacts && (
+                        <div className="border-t border-[#1f1f1f] bg-[#0a0a0a] px-5 py-4 pl-14 animate-fade-in">
+                          <div className="text-xs font-mono text-[#888888] uppercase tracking-wider mb-3 flex items-center justify-between">
+                            <span>VERIFIED DECISION MAKERS ({company.contacts.length}):</span>
+                            <span className="text-[#10b981]">APOLLO.IO + FIRECRAWL EXTRACTED</span>
+                          </div>
+                          <ul className="space-y-2.5">
+                            {company.contacts.map((contact) => (
+                              <li
+                                key={contact.id}
+                                className="flex flex-col sm:flex-row sm:items-center justify-between rounded border border-[#1f1f1f] bg-[#111111] p-3 font-mono text-xs gap-2"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-7 w-7 rounded bg-[#1f1f1f] flex items-center justify-center text-white font-bold">
+                                    {contact.name[0]}
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold text-white">{contact.name}</span>
+                                    {contact.title && (
+                                      <span className="text-[#888888]"> — {contact.title}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4 text-xs">
+                                  {contact.email && (
+                                    <span className="inline-flex items-center gap-1.5 text-[#3b82f6]">
+                                      <Mail className="h-3.5 w-3.5" aria-hidden />
+                                      {contact.email}
+                                    </span>
+                                  )}
+                                  <Badge variant="primary">{contact.confidence}% Verified</Badge>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   );

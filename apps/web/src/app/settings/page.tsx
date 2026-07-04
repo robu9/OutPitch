@@ -4,8 +4,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/ui/page-header";
 import { apiFetch } from "@/lib/api";
-import { Mail, Linkedin, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Brain,
+  CheckCircle2,
+  Linkedin,
+  Mail,
+  RefreshCw,
+  Unplug,
+  XCircle,
+  Terminal,
+  ShieldCheck,
+  Cpu,
+  Database,
+} from "lucide-react";
 
 type ConnectionStatus = {
   linkedinConnected: boolean;
@@ -165,131 +181,256 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="p-6 max-w-2xl">
-        <h1 className="text-2xl font-bold mb-1">Settings</h1>
-        <p className="text-muted-foreground mb-8">
-          Manage your connected accounts and preferences
-        </p>
+      <PageHeader
+        title="Connection Matrix"
+        description="Manage Composio OAuth accounts and Cognee neural graph integrations"
+        meta="MATRIX // INTEGRATIONS & MEMORY CONFIGURATION"
+      />
 
-        {error && (
-          <div className="mb-6 p-4 border border-destructive/40 bg-destructive/10 text-destructive rounded-xl text-sm">
-            {error}
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto bg-[#050505]">
+        <div className="mx-auto max-w-4xl px-5 py-8">
+          {error && (
+            <div
+              role="alert"
+              className="mb-6 flex items-start gap-3 rounded-md border border-[#ef4444]/40 bg-[#ef4444]/10 px-4 py-3 text-xs font-mono text-[#ef4444]"
+            >
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>[SYSTEM ERROR]: {error}</span>
+            </div>
+          )}
 
-        <div className="space-y-4">
-          <div className="p-4 border border-border rounded-xl bg-card flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Linkedin className="w-5 h-5" />
-              <div>
-                <p className="font-medium">LinkedIn</p>
-                <p className="text-sm text-muted-foreground">
-                  {linkedinSyncing
-                    ? "Syncing your profile…"
+          {/* SECTION 1: OAUTH CONNECTIONS */}
+          <section aria-labelledby="connections-heading">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                id="connections-heading"
+                className="text-xs font-mono font-bold uppercase tracking-widest text-[#3b82f6] flex items-center gap-2"
+              >
+                <Terminal className="h-3.5 w-3.5" />
+                SECTION 01 // COMPOSIO OAUTH INTEGRATIONS
+              </h2>
+              <Badge variant="success">OAUTH 2.0 ENCRYPTED</Badge>
+            </div>
+
+            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] overflow-hidden shadow-xl divide-y divide-[#1f1f1f]">
+              {/* LinkedIn Row */}
+              <ConnectionRow
+                icon={Linkedin}
+                name="LinkedIn Professional Graph"
+                description={
+                  linkedinSyncing
+                    ? "Syncing career experience and skills into Cognee dataset…"
                     : status.linkedinTokenExpired
-                      ? "Session expired — please reconnect"
+                      ? "OAuth token expired — re-authenticate to maintain memory sync"
                       : status.linkedinConnected
                         ? status.linkedinProfileSynced
-                          ? "Connected — profile synced"
-                          : "Connected — sync your profile"
-                        : "Profile data for job matching"}
-                </p>
+                          ? "Connected & Synced — career history stored in Cognee graph"
+                          : "Connected — click Sync to compound your career history"
+                        : "Required for matching candidate tone and technical seniority"
+                }
+                connected={status.linkedinConnected && !status.linkedinTokenExpired}
+                statusBadge={
+                  status.linkedinConnected
+                    ? linkedinSyncing
+                      ? { label: "SYNCING GRAPH", variant: "warning" as const }
+                      : status.linkedinProfileSynced
+                        ? { label: "COGNEE SYNCED", variant: "success" as const }
+                        : { label: "OAUTH ACTIVE", variant: "primary" as const }
+                    : undefined
+                }
+                actions={
+                  status.linkedinConnected ? (
+                    <div className="flex items-center gap-2">
+                      {status.linkedinTokenExpired ? (
+                        <Button
+                          size="sm"
+                          variant="terminal"
+                          className="h-8 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]"
+                          onClick={() => {
+                            disconnectLinkedIn().then(() => connectLinkedIn());
+                          }}
+                          disabled={loading !== null}
+                        >
+                          {loading && <Spinner className="h-3 w-3 text-[#3b82f6] mr-1" />}
+                          Re-authenticate
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="terminal"
+                          className="h-8 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]"
+                          onClick={syncLinkedIn}
+                          disabled={loading !== null}
+                        >
+                          {loading === "linkedin-sync" ? (
+                            <Spinner className="h-3 w-3 text-[#3b82f6] mr-1" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3 mr-1 text-[#3b82f6]" aria-hidden />
+                          )}
+                          Sync Graph
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 text-xs font-mono"
+                        onClick={disconnectLinkedIn}
+                        disabled={loading !== null}
+                      >
+                        {loading === "linkedin-disconnect" ? (
+                          <Spinner className="h-3 w-3 mr-1" />
+                        ) : (
+                          <Unplug className="h-3 w-3 mr-1 text-[#ef4444]" aria-hidden />
+                        )}
+                        Disconnect
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="terminal"
+                      className="h-8 text-xs font-mono bg-white text-black hover:bg-[#e0e0e0] font-bold"
+                      onClick={connectLinkedIn}
+                      disabled={loading !== null}
+                    >
+                      {loading === "linkedin-connect" && <Spinner className="h-3 w-3 mr-1" />}
+                      Connect LinkedIn OAuth
+                    </Button>
+                  )
+                }
+              />
+
+              {/* Gmail Row */}
+              <ConnectionRow
+                icon={Mail}
+                name="Google Workspace / Gmail Inbox"
+                description="Direct OAuth dispatch via Composio. Drafts land straight in your inbox or send automatically with reply tracking."
+                connected={status.gmailConnected}
+                statusBadge={
+                  status.gmailConnected
+                    ? { label: "INBOX CONNECTED", variant: "success" as const }
+                    : undefined
+                }
+                actions={
+                  status.gmailConnected ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 text-xs font-mono"
+                      onClick={disconnectGmail}
+                      disabled={loading !== null}
+                    >
+                      {loading === "gmail-disconnect" && <Spinner className="h-3 w-3 mr-1" />}
+                      Disconnect Inbox
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="terminal"
+                      className="h-8 text-xs font-mono bg-white text-black hover:bg-[#e0e0e0] font-bold"
+                      onClick={connectGmail}
+                      disabled={loading !== null}
+                    >
+                      {loading === "gmail-connect" && <Spinner className="h-3 w-3 mr-1" />}
+                      Connect Gmail OAuth
+                    </Button>
+                  )
+                }
+              />
+            </div>
+          </section>
+
+          {/* SECTION 2: COGNEE PERSISTENT GRAPH */}
+          <section className="mt-12" aria-labelledby="memory-heading">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                id="memory-heading"
+                className="text-xs font-mono font-bold uppercase tracking-widest text-[#3b82f6] flex items-center gap-2"
+              >
+                <Brain className="h-3.5 w-3.5" />
+                SECTION 02 // COGNEE PERSISTENT MEMORY GRAPH
+              </h2>
+              <Badge variant="primary" pulse>NEURAL STORAGE ACTIVE</Badge>
+            </div>
+
+            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] p-6 sm:p-8 shadow-xl relative overflow-hidden">
+              <div className="dot-grid absolute inset-0 opacity-20 pointer-events-none" aria-hidden />
+
+              <div className="flex flex-col md:flex-row md:items-start gap-6 relative z-10">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#111111] text-white">
+                  <Database className="h-6 w-6 text-[#3b82f6]" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-base font-semibold text-white">Cognee Neural Knowledge Dataset</h3>
+                    <Badge variant="muted">COMPOUNDING</Badge>
+                  </div>
+                  <p className="text-xs leading-relaxed text-[#888888] font-mono text-pretty">
+                    Outpitch stores your profile nuances, chat instructions, and per-company research in Cognee graph storage. This context prevents hallucinated cover letters and ensures outreach sounds like an experienced peer Staff Engineer.
+                  </p>
+
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
+                    <div className="rounded border border-[#1f1f1f] bg-[#111111] p-3 flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-[#10b981] shrink-0" />
+                      <span className="text-white">User Profile &amp; Tone Graph</span>
+                    </div>
+                    <div className="rounded border border-[#1f1f1f] bg-[#111111] p-3 flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-[#10b981] shrink-0" />
+                      <span className="text-white">Per-Company Research Datasets</span>
+                    </div>
+                    <div className="rounded border border-[#1f1f1f] bg-[#111111] p-3 flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-[#10b981] shrink-0" />
+                      <span className="text-white">Persistent Session Recall</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            {status.linkedinConnected ? (
-              <div className="flex items-center gap-2">
-                {status.linkedinTokenExpired ? (
-                  <button
-                    onClick={() => { disconnectLinkedIn().then(() => connectLinkedIn()); }}
-                    disabled={loading !== null}
-                    className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    {(loading === "linkedin-disconnect" || loading === "linkedin-connect") && (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    )}
-                    Reconnect
-                  </button>
-                ) : (
-                  <button
-                    onClick={syncLinkedIn}
-                    disabled={loading !== null}
-                    className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-accent disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    {loading === "linkedin-sync" && (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    )}
-                    {loading === "linkedin-sync" ? "Syncing…" : "Sync now"}
-                  </button>
-                )}
-                <button
-                  onClick={disconnectLinkedIn}
-                  disabled={loading !== null}
-                  className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {loading === "linkedin-disconnect" && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={connectLinkedIn}
-                disabled={loading !== null}
-                className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-accent disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {loading === "linkedin-connect" && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                Connect
-              </button>
-            )}
-          </div>
-
-          <div className="p-4 border border-border rounded-xl bg-card flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Mail className="w-5 h-5" />
-              <div>
-                <p className="font-medium">Gmail</p>
-                <p className="text-sm text-muted-foreground">
-                  Send outreach emails via Composio
-                </p>
-              </div>
-            </div>
-            {status.gmailConnected ? (
-              <button
-                onClick={disconnectGmail}
-                disabled={loading !== null}
-                className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {loading === "gmail-disconnect" && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                Disconnect
-              </button>
-            ) : (
-              <button
-                onClick={connectGmail}
-                disabled={loading !== null}
-                className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-accent disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {loading === "gmail-connect" && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                Connect
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-8 p-4 border border-border rounded-xl bg-card">
-          <h3 className="font-medium mb-2">Context</h3>
-          <p className="text-sm text-muted-foreground">
-            Outpitch uses your profile, chat history, and company data to
-            personalize recommendations and outreach drafts.
-          </p>
+          </section>
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function ConnectionRow({
+  icon: Icon,
+  name,
+  description,
+  connected,
+  statusBadge,
+  actions,
+}: {
+  icon: typeof Linkedin;
+  name: string;
+  description: string;
+  connected: boolean;
+  statusBadge?: { label: string; variant: "success" | "primary" | "warning" };
+  actions: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-[#0c0c0c]">
+      <div className="flex items-start gap-4">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
+            connected
+              ? "border-[#3b82f6]/40 bg-[#111111] text-[#3b82f6]"
+              : "border-[#1f1f1f] bg-[#0c0c0c] text-[#888888]"
+          }`}
+        >
+          <Icon className="h-5 w-5" aria-hidden />
+        </div>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-white">{name}</h3>
+            {statusBadge && <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>}
+          </div>
+          <p className="mt-1 text-xs text-[#888888] font-mono leading-relaxed max-w-lg text-pretty">
+            {description}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2 sm:ml-4">{actions}</div>
+    </div>
   );
 }
