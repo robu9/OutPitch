@@ -9,27 +9,139 @@ interface ApolloPerson {
   linkedin_url?: string;
 }
 
-async function apolloRequest(path: string, body: Record<string, unknown>) {
+interface ApolloErrorBody {
+  error?: string;
+  error_code?: string;
+}
+
+type ApolloRequestResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: number; errorCode?: string; message: string };
+
+let enrichmentAccessCache: boolean | null = null;
+let enrichmentUnavailableReason: string | null = null;
+
+const APOLLO_BASE = "https://api.apollo.io/api/v1";
+
+function buildQueryString(params: Record<string, unknown>): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    qs.set(key, String(value));
+  }
+  return qs.toString();
+}
+
+function markEnrichmentUnavailable(message: string) {
+  enrichmentAccessCache = false;
+  enrichmentUnavailableReason = message;
+}
+
+async function apolloRequest<T>(
+  path: string,
+  options: {
+    query?: Record<string, unknown>;
+    body?: Record<string, unknown>;
+  } = {}
+): Promise<ApolloRequestResult<T>> {
   if (!config.apolloApiKey) {
-    return null;
+    return { ok: false, status: 0, message: "APOLLO_API_KEY is not configured" };
   }
 
-  const response = await fetch(`https://api.apollo.io/api/v1${path}`, {
+  if (enrichmentAccessCache === false) {
+    return {
+      ok: false,
+      status: 403,
+      errorCode: "API_INACCESSIBLE",
+      message: enrichmentUnavailableReason ?? "Apollo enrichment is unavailable",
+    };
+  }
+
+  const queryString = options.query ? buildQueryString(options.query) : "";
+  const url = `${APOLLO_BASE}${path}${queryString ? `?${queryString}` : ""}`;
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
       "x-api-key": config.apolloApiKey,
       "Cache-Control": "no-cache",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
     },
-    body: JSON.stringify(body),
+    body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
-  if (!response.ok) {
-    console.warn(`Apollo API error: ${response.status}`);
-    return null;
+  const text = await response.text();
+  let parsed: (ApolloErrorBody & T) | null = null;
+  try {
+    parsed = JSON.parse(text) as ApolloErrorBody & T;
+  } catch {
+    parsed = null;
   }
 
-  return response.json();
+  if (!response.ok) {
+    const message = parsed?.error ?? `Apollo API error ${response.status}`;
+    const errorCode = parsed?.error_code;
+
+    if (response.status === 403 && errorCode === "API_INACCESSIBLE") {
+      markEnrichmentUnavailable(message);
+    }
+
+    console.warn(`Apollo API error (${response.status}${errorCode ? `, ${errorCode}` : ""}): ${message}`);
+    return { ok: false, status: response.status, errorCode, message };
+  }
+
+  enrichmentAccessCache = true;
+  enrichmentUnavailableReason = null;
+  return { ok: true, data: (parsed ?? ({} as T)) as T };
+}
+
+/** Probe whether people enrichment is enabled for the current Apollo plan/key. */
+export async function isApolloEnrichmentAvailable(): Promise<boolean> {
+  if (enrichmentAccessCache !== null) return enrichmentAccessCache;
+  if (!config.apolloApiKey) return false;
+
+  const health = await fetch(`${APOLLO_BASE}/auth/health`, {
+    headers: { "x-api-key": config.apolloApiKey, "Cache-Control": "no-cache" },
+  });
+  if (!health.ok) {
+    markEnrichmentUnavailable("Apollo API key failed health check");
+    return false;
+  }
+
+  const qs = buildQueryString({ first_name: "test", domain: "example.com" });
+  const probe = await fetch(`${APOLLO_BASE}/people/match?${qs}`, {
+    method: "POST",
+    headers: { "x-api-key": config.apolloApiKey, "Cache-Control": "no-cache" },
+  });
+
+  if (probe.status === 403) {
+    const body = (await probe.json().catch(() => ({}))) as ApolloErrorBody;
+    if (body.error_code === "API_INACCESSIBLE") {
+      markEnrichmentUnavailable(
+        body.error ??
+          "People enrichment requires a paid Apollo plan with API access enabled"
+      );
+      return false;
+    }
+  }
+
+  enrichmentAccessCache = probe.ok;
+  if (!probe.ok) {
+    enrichmentUnavailableReason = `Apollo people/match probe failed with status ${probe.status}`;
+  }
+  return enrichmentAccessCache;
+}
+
+export function getApolloEnrichmentStatus(): {
+  configured: boolean;
+  available: boolean | null;
+  reason: string | null;
+} {
+  return {
+    configured: Boolean(config.apolloApiKey),
+    available: enrichmentAccessCache,
+    reason: enrichmentUnavailableReason,
+  };
 }
 
 export async function enrichPerson(params: {
@@ -39,18 +151,20 @@ export async function enrichPerson(params: {
   linkedinUrl?: string;
   email?: string;
 }): Promise<{ email?: string; title?: string; confidence: number } | null> {
-  const result = await apolloRequest("/people/match", {
-    first_name: params.firstName,
-    last_name: params.lastName,
-    domain: params.domain,
-    linkedin_url: params.linkedinUrl,
-    email: params.email,
-    reveal_personal_emails: false,
+  const result = await apolloRequest<{ person?: ApolloPerson }>("/people/match", {
+    query: {
+      first_name: params.firstName,
+      last_name: params.lastName,
+      domain: params.domain,
+      linkedin_url: params.linkedinUrl,
+      email: params.email,
+      reveal_personal_emails: false,
+    },
   });
 
-  if (!result) return null;
+  if (!result.ok) return null;
 
-  const person = (result as { person?: ApolloPerson }).person;
+  const person = result.data.person;
   if (!person?.email) return null;
 
   return {
@@ -64,18 +178,20 @@ export async function bulkEnrich(
   people: Array<{ firstName?: string; lastName?: string; domain?: string }>
 ) {
   const batch = people.slice(0, 10);
-  const result = await apolloRequest("/people/bulk_match", {
-    details: batch.map((p) => ({
-      first_name: p.firstName,
-      last_name: p.lastName,
-      domain: p.domain,
-    })),
-    reveal_personal_emails: false,
+  const result = await apolloRequest<{ matches?: ApolloPerson[] }>("/people/bulk_match", {
+    query: { reveal_personal_emails: false },
+    body: {
+      details: batch.map((p) => ({
+        first_name: p.firstName,
+        last_name: p.lastName,
+        domain: p.domain,
+      })),
+    },
   });
 
-  if (!result) return [];
+  if (!result.ok) return [];
 
-  const matches = (result as { matches?: ApolloPerson[] }).matches ?? [];
+  const matches = result.data.matches ?? [];
   return matches.map((p) => ({
     email: p.email,
     title: p.title,
@@ -130,6 +246,8 @@ export async function resolveEmailViaApollo(params: {
   domain: string;
   linkedinUrl?: string;
 }): Promise<{ email: string; source: string; confidence: number; title?: string } | null> {
+  if (!(await isApolloEnrichmentAvailable())) return null;
+
   const nameParts = params.name.split(" ");
   const firstName = nameParts[0] ?? "";
   const lastName = nameParts.slice(1).join(" ");

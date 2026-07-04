@@ -62,7 +62,7 @@ npm run dev
 | `GEMINI_API_KEY` | Google Gemini API key |
 | `COMPOSIO_API_KEY` | Composio API key |
 | `SERPER_API_KEY` | Serper.dev key for Google search (company discovery, LinkedIn profile fallback) |
-| `APOLLO_API_KEY` | Apollo.io key for email fallback |
+| `APOLLO_API_KEY` | Apollo.io master key for email fallback (paid plan; people/match enrichment) |
 | `DATABASE_URL` | Neon Postgres connection string |
 | `REDIS_URL` | Hosted Redis connection string |
 

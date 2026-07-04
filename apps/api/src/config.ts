@@ -12,7 +12,7 @@ export const config = {
   cogneeTenantId: process.env.COGNEE_TENANT_ID ?? "",
   composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
   serperApiKey: process.env.SERPER_API_KEY ?? "",
-  apolloApiKey: process.env.APOLLO_API_KEY ?? "",
+  apolloApiKey: (process.env.APOLLO_API_KEY ?? "").replace(/^["']|["']$/g, ""),
   emailVerifierHeloDomain: process.env.EMAIL_VERIFIER_HELO_DOMAIN ?? "outpitch.app",
   emailVerifierFromEmail: process.env.EMAIL_VERIFIER_FROM_EMAIL ?? "verify@outpitch.app",
   emailVerifierSmtpTimeoutMs: parseInt(process.env.EMAIL_VERIFIER_SMTP_TIMEOUT_MS ?? "8000", 10),

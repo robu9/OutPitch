@@ -3,7 +3,12 @@ import { prisma, type CompanyContact } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import { searchCompanies, searchPeopleAtCompany } from "../services/serp.js";
 import { crawlCompanyWebsite } from "../services/crawler.js";
-import { resolveEmail, resolveEmailViaApollo } from "../services/email-resolver.js";
+import {
+  resolveEmail,
+  resolveEmailViaApollo,
+  isApolloEnrichmentAvailable,
+  getApolloEnrichmentStatus,
+} from "../services/email-resolver.js";
 import { verifyEmailExists } from "../services/email-verifier.js";
 import {
   ingestCompanyContext,
@@ -215,63 +220,77 @@ async function processPipeline(job: Job<PipelineJobData>) {
       }
 
       if (contacts.length === 0) {
-        await updateJob(jobId, {
-          status: "enriching",
-          progress: progress + 5,
-          message: `No verified emails — trying Apollo for ${company.name}...`,
-        });
+        const apolloAvailable = await isApolloEnrichmentAvailable();
 
-        for (const person of people.slice(0, 5)) {
-          const apolloResolved = await resolveEmailViaApollo({
-            name: person.name,
-            domain: company.domain,
-            linkedinUrl: person.linkedinUrl,
-          });
-          if (!apolloResolved) continue;
-
-          const verification = await verifyEmailExists(apolloResolved.email);
-          if (!verification.valid) {
-            console.log(
-              `Rejected Apollo email ${apolloResolved.email} for ${person.name} at ${company.domain}: ${verification.reason}`
-            );
-            continue;
-          }
-
-          const existing = dbCompany.contacts.find(
-            (c: CompanyContact) => c.name.toLowerCase() === person.name.toLowerCase()
+        if (!apolloAvailable) {
+          const apolloStatus = getApolloEnrichmentStatus();
+          console.warn(
+            `Skipping Apollo for ${company.name}: ${apolloStatus.reason ?? "enrichment unavailable"}`
           );
+          await updateJob(jobId, {
+            status: "enriching",
+            progress: progress + 5,
+            message: `No verified emails for ${company.name} (Apollo enrichment unavailable — upgrade Apollo plan)`,
+          });
+        } else {
+          await updateJob(jobId, {
+            status: "enriching",
+            progress: progress + 5,
+            message: `No verified emails — trying Apollo for ${company.name}...`,
+          });
 
-          if (existing) {
-            await prisma.companyContact.update({
-              where: { id: existing.id },
-              data: {
-                email: apolloResolved.email,
-                source: apolloResolved.source,
-                confidence: apolloResolved.confidence,
-                title: apolloResolved.title ?? person.title,
-              },
+          for (const person of people.slice(0, 5)) {
+            const apolloResolved = await resolveEmailViaApollo({
+              name: person.name,
+              domain: company.domain,
+              linkedinUrl: person.linkedinUrl,
             });
-          } else {
-            await prisma.companyContact.create({
-              data: {
-                companyId: dbCompany.id,
-                name: person.name,
-                title: apolloResolved.title ?? person.title,
-                email: apolloResolved.email,
-                linkedinUrl: person.linkedinUrl,
-                source: apolloResolved.source,
-                confidence: apolloResolved.confidence,
-              },
+            if (!apolloResolved) continue;
+
+            const verification = await verifyEmailExists(apolloResolved.email);
+            if (!verification.valid) {
+              console.log(
+                `Rejected Apollo email ${apolloResolved.email} for ${person.name} at ${company.domain}: ${verification.reason}`
+              );
+              continue;
+            }
+
+            const existing = dbCompany.contacts.find(
+              (c: CompanyContact) => c.name.toLowerCase() === person.name.toLowerCase()
+            );
+
+            if (existing) {
+              await prisma.companyContact.update({
+                where: { id: existing.id },
+                data: {
+                  email: apolloResolved.email,
+                  source: apolloResolved.source,
+                  confidence: apolloResolved.confidence,
+                  title: apolloResolved.title ?? person.title,
+                },
+              });
+            } else {
+              await prisma.companyContact.create({
+                data: {
+                  companyId: dbCompany.id,
+                  name: person.name,
+                  title: apolloResolved.title ?? person.title,
+                  email: apolloResolved.email,
+                  linkedinUrl: person.linkedinUrl,
+                  source: apolloResolved.source,
+                  confidence: apolloResolved.confidence,
+                },
+              });
+            }
+
+            contacts.push({
+              name: person.name,
+              title: apolloResolved.title ?? person.title,
+              email: apolloResolved.email,
+              source: apolloResolved.source,
+              confidence: apolloResolved.confidence,
             });
           }
-
-          contacts.push({
-            name: person.name,
-            title: apolloResolved.title ?? person.title,
-            email: apolloResolved.email,
-            source: apolloResolved.source,
-            confidence: apolloResolved.confidence,
-          });
         }
       }
 
