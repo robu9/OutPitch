@@ -17,12 +17,16 @@ model User {
   linkedinConnected Boolean  @default(false)
   gmailConnected    Boolean  @default(false)
   onboardingDone    Boolean  @default(false)
+  whatsappNumber     String?  @unique
+  whatsappVerified   Boolean  @default(false)
+  whatsappVerifyCode String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   profile    UserProfile?
   campaigns  OutreachCampaign[]
   chatMessages ChatMessage[]
+  chatSessions ChatSession[]
   companyLinks UserCompanyLink[]
   emailThreads EmailThread[]
 }
@@ -139,18 +143,36 @@ model EmailThread {
   @@index([threadId])
 }
 
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("New chat")
+  channel   String   @default("web")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
 model ChatMessage {
   id        String   @id @default(cuid())
   userId    String
+  sessionId String?
   role      String
   content   String
   toolName  String?
   metadata  Json?
+  channel   String   @default("web")
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session ChatSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
 }
 
 model PipelineJob {

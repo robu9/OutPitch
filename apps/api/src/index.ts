@@ -13,6 +13,7 @@ import onboardingRoutes from "./routes/onboarding.js";
 import chatRoutes from "./routes/chat.js";
 import companiesRoutes from "./routes/companies.js";
 import outreachRoutes from "./routes/outreach.js";
+import whatsappRoutes from "./routes/whatsapp.js";
 
 const app = express();
 
@@ -40,7 +41,15 @@ app.use(
     },
     credentials: true,
   })
-);app.use(express.json());
+);
+app.use(
+  express.json({
+    // Preserve the raw body so webhook routes can verify HMAC signatures.
+    verify: (req, _res, buf) => {
+      (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+    },
+  })
+);
 
 app.use("/api", healthRoutes);
 app.use("/api/auth", authRoutes);
@@ -48,6 +57,7 @@ app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/companies", companiesRoutes);
 app.use("/api/outreach", outreachRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
 
 app.use(errorHandler);
 

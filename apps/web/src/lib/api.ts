@@ -33,7 +33,8 @@ export async function streamChat(
   clerkUserId: string,
   onChunk: (chunk: string) => void,
   onDone: () => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  options: { sessionId?: string; onSession?: (sessionId: string, title: string) => void } = {}
 ) {
   const response = await fetch(`${API_URL}/api/chat`, {
     method: "POST",
@@ -41,7 +42,7 @@ export async function streamChat(
       "Content-Type": "application/json",
       "x-clerk-user-id": clerkUserId,
     },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, sessionId: options.sessionId }),
   });
 
   if (!response.ok || !response.body) {
@@ -63,6 +64,7 @@ export async function streamChat(
       if (line.startsWith("data: ")) {
         try {
           const data = JSON.parse(line.slice(6));
+          if (data.type === "session") options.onSession?.(data.sessionId, data.title);
           if (data.type === "chunk") onChunk(data.content);
           if (data.type === "done") onDone();
           if (data.type === "error") onError(data.content);
@@ -72,4 +74,11 @@ export async function streamChat(
       }
     }
   }
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  updatedAt: string;
+  createdAt: string;
 }

@@ -13,6 +13,7 @@
     "@google/generative-ai": "^0.24.1",
     "@outpitch/db": "*",
     "@outpitch/types": "*",
+    "apify-client": "^2.11.1",
     "bullmq": "^5.56.0",
     "cheerio": "^1.1.0",
     "cors": "^2.8.5",
