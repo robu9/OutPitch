@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const EmailSourceSchema = z.enum(["crawl", "apollo", "pattern", "manual"]);
+export const EmailSourceSchema = z.enum(["crawl", "pattern", "manual"]);
 export type EmailSource = z.infer<typeof EmailSourceSchema>;
 
 export const CampaignStatusSchema = z.enum([

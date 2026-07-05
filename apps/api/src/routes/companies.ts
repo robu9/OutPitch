@@ -6,9 +6,6 @@ import { requireAuth } from "../middleware/auth.js";
 import { enqueueCompanyPipeline } from "../jobs/company-pipeline.js";
 import { assessSearchReadiness, toSearchParams } from "../services/search-context.js";
 import { improve, userDataset } from "../services/cognee.js";
-import { verifyEmailExists } from "../services/email-verifier.js";
-import { config } from "../config.js";
-import { AppError } from "../middleware/error.js";
 
 const router = Router();
 
@@ -73,91 +70,6 @@ router.post(
     );
 
     res.json({ jobId: job.id, status: job.status, searchContext: readiness.contextSummary });
-  })
-);
-
-router.post(
-  "/audit-emails",
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (config.nodeEnv !== "development") {
-      throw new AppError(403, "Audit only available in development", "DEV_ONLY");
-    }
-
-    const apply = req.query.apply === "true";
-
-    const contacts = await prisma.companyContact.findMany({
-      where: { email: { not: null } },
-      include: { company: { select: { name: true, domain: true } } },
-      orderBy: [{ company: { name: "asc" } }, { name: "asc" }],
-    });
-
-    const valid: Array<{
-      id: string;
-      email: string;
-      name: string;
-      company: string;
-      domain: string;
-      deliverability: string;
-      smtpCode?: number;
-    }> = [];
-    const invalid: Array<{
-      id: string;
-      email: string;
-      name: string;
-      company: string;
-      domain: string;
-      reason: string;
-      smtpCode?: number;
-    }> = [];
-
-    for (const contact of contacts) {
-      const email = contact.email!;
-      const result = await verifyEmailExists(email);
-
-      if (result.valid) {
-        valid.push({
-          id: contact.id,
-          email,
-          name: contact.name,
-          company: contact.company.name,
-          domain: contact.company.domain,
-          deliverability: result.deliverability,
-          smtpCode: result.smtpCode,
-        });
-      } else {
-        invalid.push({
-          id: contact.id,
-          email,
-          name: contact.name,
-          company: contact.company.name,
-          domain: contact.company.domain,
-          reason: result.reason ?? result.deliverability,
-          smtpCode: result.smtpCode,
-        });
-      }
-    }
-
-    let cleared = 0;
-    if (apply && invalid.length > 0) {
-      const updated = await prisma.companyContact.updateMany({
-        where: { id: { in: invalid.map((c) => c.id) } },
-        data: { email: null, confidence: 0 },
-      });
-      cleared = updated.count;
-    }
-
-    res.json({
-      mode: apply ? "apply" : "dry-run",
-      summary: {
-        total: contacts.length,
-        valid: valid.length,
-        invalid: invalid.length,
-        cleared,
-      },
-      valid,
-      invalid,
-    });
   })
 );
 

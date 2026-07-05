@@ -8,14 +8,14 @@ AI-powered job outreach platform. Find companies hiring for your role, discover 
 - **Backend**: Node.js/TypeScript Express API
 - **Database**: Neon Postgres (via Prisma)
 - **Queue**: BullMQ with hosted Redis
-- **Integrations**: Composio (LinkedIn + Gmail), Serper.dev, Apollo.io, Google Gemini
+- **Integrations**: Composio (LinkedIn + Gmail), Serper.dev, Google Gemini
 
 ## Prerequisites
 
 - Node.js 20+
 - Neon Postgres database
 - Hosted Redis instance (e.g. Upstash)
-- API keys: Clerk, Gemini, Composio, Serper.dev, Apollo (optional for fallback)
+- API keys: Clerk, Gemini, Composio, Serper.dev
 
 ## Quick Start
 
@@ -62,7 +62,6 @@ npm run dev
 | `GEMINI_API_KEY` | Google Gemini API key |
 | `COMPOSIO_API_KEY` | Composio API key |
 | `SERPER_API_KEY` | Serper.dev key for Google search (company discovery, LinkedIn profile fallback) |
-| `APOLLO_API_KEY` | Apollo.io master key for email fallback (paid plan; people/match enrichment) |
 | `DATABASE_URL` | Neon Postgres connection string |
 | `REDIS_URL` | Hosted Redis connection string |
 
@@ -92,7 +91,7 @@ npm run dev
 
 1. **Serper.dev** searches for companies hiring the target role
 2. **Website crawler** extracts company context and emails from /about, /team, /careers
-3. **Apollo.io** enriches contacts when crawl finds no email (fallback)
+3. **Email resolver** matches crawled emails to people or guesses patterns from known domain formats
 4. Results linked to user via `UserCompanyLink` with match scores
 
 ## Clerk Setup
