@@ -116,12 +116,12 @@ export default function OnboardingPage() {
             <div key={label} className="flex-1">
               <div
                 className={`h-1 rounded-full transition-colors ${
-                  step > i ? "bg-white" : "bg-border"
+                  step > i ? "bg-foreground" : "bg-border"
                 }`}
               />
               <p
                 className={`mt-2 text-xs ${
-                  step > i ? "text-white" : "text-text-secondary"
+                  step > i ? "text-foreground" : "text-text-secondary"
                 }`}
               >
                 {label}
@@ -130,7 +130,7 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        <h1 className="text-2xl font-medium tracking-tight text-white">
+        <h1 className="text-2xl font-medium tracking-tight text-foreground">
           {step === 1 && "Connect your accounts"}
           {step === 2 && "Tell us what you're looking for"}
           {step === 3 && "You're ready to go"}
@@ -147,7 +147,7 @@ export default function OnboardingPage() {
         {error && (
           <div
             role="alert"
-            className="mt-6 rounded-xl border border-border bg-bg-elevated px-4 py-3 text-sm text-white"
+            className="mt-6 rounded-xl border border-border bg-bg-elevated px-4 py-3 text-sm text-foreground"
           >
             {error}
           </div>
@@ -161,21 +161,21 @@ export default function OnboardingPage() {
               disabled={loading}
               className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors ${
                 linkedinConnected
-                  ? "border-white bg-bg-elevated"
+                  ? "border-foreground bg-bg-elevated"
                   : "border-border bg-bg-elevated hover:border-border-strong"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Linkedin className="h-5 w-5 text-white" aria-hidden />
+                <Linkedin className="h-5 w-5 text-foreground" aria-hidden />
                 <div>
-                  <p className="text-sm font-medium text-white">LinkedIn</p>
+                  <p className="text-sm font-medium text-foreground">LinkedIn</p>
                   <p className="text-xs text-text-secondary">
                     {linkedinConnected ? "Connected" : "Import your experience"}
                   </p>
                 </div>
               </div>
               {linkedinConnected && (
-                <CheckCircle2 className="h-5 w-5 text-white" aria-hidden />
+                <CheckCircle2 className="h-5 w-5 text-foreground" aria-hidden />
               )}
             </button>
 
@@ -184,21 +184,21 @@ export default function OnboardingPage() {
               onClick={connectGmail}
               className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors ${
                 gmailConnected
-                  ? "border-white bg-bg-elevated"
+                  ? "border-foreground bg-bg-elevated"
                   : "border-border bg-bg-elevated hover:border-border-strong"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-white" aria-hidden />
+                <Mail className="h-5 w-5 text-foreground" aria-hidden />
                 <div>
-                  <p className="text-sm font-medium text-white">Gmail</p>
+                  <p className="text-sm font-medium text-foreground">Gmail</p>
                   <p className="text-xs text-text-secondary">
                     {gmailConnected ? "Connected" : "Send outreach from your inbox"}
                   </p>
                 </div>
               </div>
               {gmailConnected && (
-                <CheckCircle2 className="h-5 w-5 text-white" aria-hidden />
+                <CheckCircle2 className="h-5 w-5 text-foreground" aria-hidden />
               )}
             </button>
 
@@ -218,7 +218,7 @@ export default function OnboardingPage() {
             className="mt-8 space-y-4"
           >
             <div>
-              <label htmlFor="targetRole" className="text-sm text-white">
+              <label htmlFor="targetRole" className="text-sm text-foreground">
                 Target role <span className="text-text-secondary">*</span>
               </label>
               <Input
@@ -231,7 +231,7 @@ export default function OnboardingPage() {
               />
             </div>
             <div>
-              <label htmlFor="targetLocation" className="text-sm text-white">
+              <label htmlFor="targetLocation" className="text-sm text-foreground">
                 Location preference
               </label>
               <Input
@@ -243,7 +243,7 @@ export default function OnboardingPage() {
               />
             </div>
             <div>
-              <label htmlFor="targetIndustries" className="text-sm text-white">
+              <label htmlFor="targetIndustries" className="text-sm text-foreground">
                 Industries (comma-separated)
               </label>
               <Input
@@ -255,7 +255,7 @@ export default function OnboardingPage() {
               />
             </div>
             <div>
-              <label htmlFor="summary" className="text-sm text-white">
+              <label htmlFor="summary" className="text-sm text-foreground">
                 Background summary
               </label>
               <textarea
@@ -264,7 +264,7 @@ export default function OnboardingPage() {
                 onChange={(e) => setForm({ ...form, summary: e.target.value })}
                 placeholder="Brief summary of your experience..."
                 rows={4}
-                className="mt-1.5 w-full rounded-lg border border-border bg-bg-surface px-3.5 py-2.5 text-sm text-white placeholder:text-text-secondary focus:border-border-strong focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-border bg-bg-surface px-3.5 py-2.5 text-sm text-foreground placeholder:text-text-secondary focus:border-border-strong focus:outline-none"
               />
             </div>
             <div className="flex gap-3 pt-2">
@@ -284,12 +284,12 @@ export default function OnboardingPage() {
             <div className="rounded-xl border border-border bg-bg-elevated p-5 text-sm">
               <div className="flex justify-between py-1.5">
                 <span className="text-text-secondary">Role</span>
-                <span className="text-white">{form.targetRole}</span>
+                <span className="text-foreground">{form.targetRole}</span>
               </div>
               {form.targetLocation && (
                 <div className="flex justify-between py-1.5">
                   <span className="text-text-secondary">Location</span>
-                  <span className="text-white">{form.targetLocation}</span>
+                  <span className="text-foreground">{form.targetLocation}</span>
                 </div>
               )}
             </div>
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
               </Button>
               <Button className="flex-1" size="lg" onClick={handleSubmit} disabled={loading}>
                 {loading ? (
-                  <Spinner className="h-4 w-4 text-[#050505]" />
+                  <Spinner className="h-4 w-4 text-[var(--btn-primary-fg)]" />
                 ) : (
                   <>
                     Open chat

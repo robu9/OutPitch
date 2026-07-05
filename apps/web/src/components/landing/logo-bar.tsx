@@ -15,7 +15,7 @@ export function LogoBar() {
           {logos.map((name) => (
             <div
               key={name}
-              className="flex items-center justify-center bg-bg-base py-6 text-sm font-medium text-text-secondary transition-colors hover:text-white"
+              className="flex items-center justify-center bg-bg-base py-6 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-hover hover:text-foreground"
             >
               {name}
             </div>

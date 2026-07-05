@@ -74,7 +74,9 @@ export function Pricing() {
               onClick={() => setYearly(false)}
               className={cn(
                 "rounded-full px-4 py-1.5 text-sm transition-colors",
-                !yearly ? "bg-white text-[#050505]" : "text-text-secondary hover:text-white"
+                !yearly
+                  ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)]"
+                  : "text-text-secondary hover:text-foreground"
               )}
             >
               Monthly
@@ -84,7 +86,9 @@ export function Pricing() {
               onClick={() => setYearly(true)}
               className={cn(
                 "rounded-full px-4 py-1.5 text-sm transition-colors",
-                yearly ? "bg-white text-[#050505]" : "text-text-secondary hover:text-white"
+                yearly
+                  ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)]"
+                  : "text-text-secondary hover:text-foreground"
               )}
             >
               Yearly
@@ -100,7 +104,7 @@ export function Pricing() {
                 className={cn(
                   "flex h-full flex-col rounded-2xl border p-6",
                   plan.highlighted
-                    ? "border-white bg-bg-surface"
+                    ? "border-foreground bg-bg-base shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                     : "border-border bg-bg-elevated"
                 )}
               >
@@ -109,10 +113,10 @@ export function Pricing() {
                     Popular
                   </span>
                 )}
-                <h3 className="text-lg font-medium text-white">{plan.name}</h3>
+                <h3 className="text-lg font-medium text-foreground">{plan.name}</h3>
                 <p className="mt-1 text-sm text-text-secondary">{plan.description}</p>
                 <div className="mt-6">
-                  <span className="text-4xl font-medium text-white">
+                  <span className="text-4xl font-medium text-foreground">
                     ${yearly ? plan.yearly : plan.monthly}
                   </span>
                   {plan.monthly > 0 && (
@@ -125,7 +129,7 @@ export function Pricing() {
                       key={f}
                       className="flex items-start gap-2 text-sm text-text-secondary"
                     >
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-white" aria-hidden />
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" aria-hidden />
                       {f}
                     </li>
                   ))}

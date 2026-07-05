@@ -40,12 +40,12 @@ export function WhyFails() {
           <Stagger className="space-y-3" stagger={0.06}>
             {problems.map((p) => (
               <StaggerItem key={p.title}>
-                <div className="flex gap-4 rounded-xl border border-border bg-bg-base p-5 transition-colors hover:border-border-strong">
+                <div className="flex flex-col gap-4 rounded-xl border border-border bg-bg-base p-5 transition-colors hover:border-border-strong hover:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-surface">
                     <X className="h-4 w-4 text-text-secondary" aria-hidden />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-white">{p.title}</h3>
+                    <h3 className="text-sm font-medium text-foreground">{p.title}</h3>
                     <p className="mt-1 text-sm text-text-secondary text-pretty">
                       {p.description}
                     </p>

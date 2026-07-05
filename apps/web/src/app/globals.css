@@ -1,6 +1,81 @@
 @import "tailwindcss";
 
-:root,
+/* ── Light theme (default) ── */
+:root {
+  --bg-base: #ffffff;
+  --bg-elevated: #fafafa;
+  --bg-surface: #f5f5f5;
+  --bg-hover: #efefef;
+
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-muted: #737373;
+
+  --border: #e5e5e5;
+  --border-strong: #d4d4d4;
+
+  --link: #2563eb;
+
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --muted-foreground: var(--text-secondary);
+  --subtle: var(--text-muted);
+  --surface: var(--bg-surface);
+  --surface-hover: var(--bg-hover);
+  --border-color: var(--border);
+
+  --btn-primary-bg: #0a0a0a;
+  --btn-primary-fg: #ffffff;
+  --btn-primary-hover: #262626;
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-fg: #0a0a0a;
+  --btn-secondary-hover: #fafafa;
+  --btn-ghost-hover: #f5f5f5;
+  --btn-outline-bg: #ffffff;
+
+  --nav-pill-bg: rgba(255, 255, 255, 0.85);
+  --nav-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+
+  --surface-card-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 12px 40px -12px rgba(0, 0, 0, 0.08);
+
+  --hero-glow: rgba(0, 0, 0, 0.03);
+  --dot-color: #e5e5e5;
+  --window-dot: #d4d4d4;
+
+  --selection-bg: #0a0a0a;
+  --selection-fg: #ffffff;
+  --focus-ring: #0a0a0a;
+
+  --chat-user-bg: #0a0a0a;
+  --chat-user-fg: #ffffff;
+  --chat-assistant-bg: #f5f5f5;
+  --chat-assistant-fg: #525252;
+
+  --graph-stroke: #e5e5e5;
+  --graph-stroke-active: #0a0a0a;
+  --graph-node-active-bg: #0a0a0a;
+  --graph-node-active-fg: #ffffff;
+
+  --logo-mark-bg: #0a0a0a;
+  --logo-mark-fg: #ffffff;
+
+  --marquee-fade: var(--bg-elevated);
+
+  --radius: 0.625rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration: 200ms;
+
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-modal-backdrop: 200;
+  --z-modal: 210;
+  --z-toast: 300;
+}
+
+/* ── Dark theme (unchanged) ── */
 .dark {
   --bg-base: #050505;
   --bg-elevated: #0a0a0a;
@@ -14,6 +89,8 @@
   --border: #1f1f1f;
   --border-strong: #2a2a2a;
 
+  --link: #60a5fa;
+
   --background: var(--bg-base);
   --foreground: var(--text-primary);
   --muted-foreground: var(--text-secondary);
@@ -22,15 +99,44 @@
   --surface-hover: var(--bg-hover);
   --border-color: var(--border);
 
-  --radius: 0.625rem;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration: 200ms;
+  --btn-primary-bg: #ffffff;
+  --btn-primary-fg: #050505;
+  --btn-primary-hover: #e5e5e5;
+  --btn-secondary-bg: #111111;
+  --btn-secondary-fg: #ffffff;
+  --btn-secondary-hover: #161616;
+  --btn-ghost-hover: #161616;
+  --btn-outline-bg: transparent;
 
-  --z-dropdown: 50;
-  --z-sticky: 100;
-  --z-modal-backdrop: 200;
-  --z-modal: 210;
-  --z-toast: 300;
+  --nav-pill-bg: rgba(10, 10, 10, 0.8);
+  --nav-pill-shadow: none;
+
+  --surface-card-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 24px 64px -24px rgba(0, 0, 0, 0.8);
+
+  --hero-glow: rgba(255, 255, 255, 0.02);
+  --dot-color: #2a2a2a;
+  --window-dot: #2a2a2a;
+
+  --selection-bg: #ffffff;
+  --selection-fg: #050505;
+  --focus-ring: #ffffff;
+
+  --chat-user-bg: #ffffff;
+  --chat-user-fg: #050505;
+  --chat-assistant-bg: #111111;
+  --chat-assistant-fg: #a3a3a3;
+
+  --graph-stroke: #2a2a2a;
+  --graph-stroke-active: #ffffff;
+  --graph-node-active-bg: #ffffff;
+  --graph-node-active-fg: #050505;
+
+  --logo-mark-bg: #ffffff;
+  --logo-mark-fg: #050505;
+
+  --marquee-fade: var(--bg-elevated);
 }
 
 @theme inline {
@@ -47,6 +153,7 @@
   --color-bg-surface: var(--bg-surface);
   --color-bg-hover: var(--bg-hover);
   --color-text-secondary: var(--text-secondary);
+  --color-link: var(--link);
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 2px);
@@ -79,12 +186,12 @@ body {
 }
 
 ::selection {
-  background: #ffffff;
-  color: #050505;
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 :focus-visible {
-  outline: 1px solid #ffffff;
+  outline: 1px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -97,22 +204,21 @@ body {
 }
 
 .nav-pill {
-  background: rgba(10, 10, 10, 0.8);
+  background: var(--nav-pill-bg);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   border: 1px solid var(--border);
+  box-shadow: var(--nav-pill-shadow);
 }
 
 .surface-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 24px 64px -24px rgba(0, 0, 0, 0.8);
+  box-shadow: var(--surface-card-shadow);
 }
 
 .dot-pattern {
-  background-image: radial-gradient(circle at center, #2a2a2a 1px, transparent 1px);
+  background-image: radial-gradient(circle at center, var(--dot-color) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
@@ -121,6 +227,29 @@ body {
   background-image:
     linear-gradient(to right, var(--border) 1px, transparent 1px),
     linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+}
+
+.hero-glow {
+  background: var(--hero-glow);
+}
+
+.chat-user-bubble {
+  background: var(--chat-user-bg);
+  color: var(--chat-user-fg);
+}
+
+.chat-assistant-bubble {
+  background: var(--chat-assistant-bg);
+  color: var(--chat-assistant-fg);
+  border: 1px solid var(--border);
+}
+
+.marquee-fade-left {
+  background: linear-gradient(to right, var(--marquee-fade), transparent);
+}
+
+.marquee-fade-right {
+  background: linear-gradient(to left, var(--marquee-fade), transparent);
 }
 
 @keyframes marquee {

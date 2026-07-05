@@ -13,10 +13,10 @@ export function LandingCta() {
               className="pointer-events-none absolute inset-0 opacity-30"
               aria-hidden
             >
-              <div className="absolute left-1/2 top-0 h-64 w-96 -translate-x-1/2 rounded-full bg-white/[0.03] blur-3xl" />
+              <div className="absolute left-1/2 top-0 h-64 w-96 -translate-x-1/2 rounded-full hero-glow blur-3xl" />
             </div>
 
-            <h2 className="relative text-3xl font-medium tracking-tight text-white text-balance sm:text-4xl">
+            <h2 className="relative text-3xl font-medium tracking-tight text-foreground text-balance sm:text-4xl">
               Start outreach that remembers you
             </h2>
             <p className="relative mx-auto mt-4 max-w-lg text-base text-text-secondary text-pretty">

@@ -22,10 +22,10 @@ function LogoMark({ className }: { className?: string }) {
       className={cn("shrink-0", className)}
       aria-hidden
     >
-      <rect width="32" height="32" rx="8" fill="#ffffff" />
+      <rect width="32" height="32" rx="8" fill="var(--logo-mark-bg)" />
       <path
         d="M9 22V10h3.2l4.8 7.2V10H20v12h-3.2L12 14.8V22H9z"
-        fill="#050505"
+        fill="var(--logo-mark-fg)"
       />
     </svg>
   );
@@ -42,7 +42,7 @@ export function Logo({
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark className={s.icon} />
       {showWordmark && (
-        <span className={cn("font-semibold tracking-tight text-white", s.text)}>
+        <span className={cn("font-semibold tracking-tight text-foreground", s.text)}>
           Outpitch
         </span>
       )}

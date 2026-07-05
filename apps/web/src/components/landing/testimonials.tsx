@@ -49,19 +49,19 @@ function TestimonialCard({
   role: string;
 }) {
   return (
-    <div className="w-[340px] shrink-0 rounded-2xl border border-border bg-bg-elevated p-6">
+    <div className="w-[340px] shrink-0 rounded-2xl border border-border bg-bg-base p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <p className="text-sm text-text-secondary leading-relaxed text-pretty">
         &ldquo;{quote}&rdquo;
       </p>
       <div className="mt-5 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-surface text-xs font-medium text-white">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-surface text-xs font-medium text-foreground">
           {name
             .split(" ")
             .map((n) => n[0])
             .join("")}
         </div>
         <div>
-          <p className="text-sm font-medium text-white">{name}</p>
+          <p className="text-sm font-medium text-foreground">{name}</p>
           <p className="text-xs text-text-secondary">{role}</p>
         </div>
       </div>
@@ -84,8 +84,8 @@ export function Testimonials() {
       </div>
 
       <div className="relative mt-14">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-bg-elevated to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-bg-elevated to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 marquee-fade-left" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 marquee-fade-right" />
 
         <div className="flex animate-marquee gap-4">
           {row.map((t, i) => (

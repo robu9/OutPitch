@@ -10,7 +10,7 @@ export default function SignInPage() {
       <div className="flex flex-1 items-center justify-center px-5 py-16">
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <h1 className="text-xl font-medium tracking-tight text-white">
+            <h1 className="text-xl font-medium tracking-tight text-foreground">
               Welcome back
             </h1>
             <p className="mt-1.5 text-sm text-text-secondary">

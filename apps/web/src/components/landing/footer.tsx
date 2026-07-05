@@ -42,13 +42,13 @@ export function MarketingFooter() {
           </div>
           {columns.map((col) => (
             <div key={col.title}>
-              <h3 className="text-sm font-medium text-white">{col.title}</h3>
+              <h3 className="text-sm font-medium text-foreground">{col.title}</h3>
               <ul className="mt-4 space-y-2">
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-text-secondary transition-colors hover:text-white"
+                      className="text-sm text-text-secondary transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </a>
@@ -65,13 +65,13 @@ export function MarketingFooter() {
           <div className="flex gap-4">
             <Link
               href="/sign-in"
-              className="text-xs text-text-secondary hover:text-white"
+              className="text-xs text-text-secondary hover:text-foreground"
             >
               Log in
             </Link>
             <Link
               href="/sign-up"
-              className="text-xs text-text-secondary hover:text-white"
+              className="text-xs text-text-secondary hover:text-foreground"
             >
               Sign up
             </Link>

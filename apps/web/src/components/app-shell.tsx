@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -57,7 +58,7 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setCollapsed(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-hover hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-hover hover:text-foreground"
               aria-label="Collapse sidebar"
             >
               <PanelLeftClose className="h-4 w-4" aria-hidden />
@@ -69,7 +70,7 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-hover hover:text-white"
+            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-hover hover:text-foreground"
             aria-label="Expand sidebar"
           >
             <PanelLeft className="h-4 w-4" aria-hidden />
@@ -88,8 +89,8 @@ export function AppShell({
                     className={cn(
                       "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
                       active
-                        ? "bg-bg-surface text-white"
-                        : "text-text-secondary hover:bg-bg-hover hover:text-white",
+                        ? "bg-bg-surface text-foreground"
+                        : "text-text-secondary hover:bg-bg-hover hover:text-foreground",
                       collapsed && "justify-center px-2"
                     )}
                   >
@@ -116,6 +117,7 @@ export function AppShell({
             collapsed ? "justify-center" : "justify-between"
           )}
         >
+          {!collapsed && <ThemeToggle />}
           <UserButton afterSignOutUrl="/" />
         </div>
       </aside>

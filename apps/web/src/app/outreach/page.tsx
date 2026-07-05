@@ -68,13 +68,13 @@ export default function OutreachPage() {
           campaigns.length > 0 ? (
             <div className="flex gap-4 text-sm text-text-secondary">
               <span>
-                <strong className="text-white">{sent}</strong> sent
+                <strong className="text-foreground">{sent}</strong> sent
               </span>
               <span>
-                <strong className="text-white">{replied}</strong> replies
+                <strong className="text-foreground">{replied}</strong> replies
               </span>
               <span>
-                <strong className="text-white">{replyRate}%</strong> reply rate
+                <strong className="text-foreground">{replyRate}%</strong> reply rate
               </span>
             </div>
           ) : undefined
@@ -117,7 +117,7 @@ export default function OutreachPage() {
                         </span>
                       )}
                     </div>
-                    <h3 className="mt-3 text-sm font-medium text-white">
+                    <h3 className="mt-3 text-sm font-medium text-foreground">
                       {campaign.subject ?? "No subject"}
                     </h3>
                     <p className="mt-1 text-sm text-text-secondary">

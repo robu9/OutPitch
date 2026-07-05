@@ -72,7 +72,7 @@ export function CogneeSection() {
                   key={item}
                   className="flex items-start gap-3 text-sm text-text-secondary"
                 >
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white" />
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-foreground" />
                   {item}
                 </li>
               ))}
@@ -102,7 +102,7 @@ export function CogneeSection() {
                       y1={a.y}
                       x2={b.x}
                       y2={b.y}
-                      stroke={isActive ? "#ffffff" : "#2a2a2a"}
+                      stroke={isActive ? "var(--graph-stroke-active)" : "var(--graph-stroke)"}
                       strokeWidth={isActive ? 0.4 : 0.2}
                       initial={false}
                       animate={{
@@ -131,8 +131,8 @@ export function CogneeSection() {
                   <div
                     className={`rounded-full border px-3 py-1.5 text-[11px] font-medium whitespace-nowrap ${
                       node.id === "memory"
-                        ? "border-white bg-white text-[#050505]"
-                        : "border-border bg-bg-surface text-text-secondary"
+                        ? "border-[var(--graph-node-active-bg)] bg-[var(--graph-node-active-bg)] text-[var(--graph-node-active-fg)]"
+                        : "border-border bg-bg-base text-text-secondary shadow-sm"
                     }`}
                   >
                     {node.label}
@@ -142,7 +142,7 @@ export function CogneeSection() {
 
               {!reduced && (
                 <motion.div
-                  className="absolute h-2 w-2 rounded-full bg-white"
+                  className="absolute h-2 w-2 rounded-full bg-[var(--graph-stroke-active)]"
                   animate={{
                     left: [
                       `${getNode(edges[activeEdge][0]).x}%`,

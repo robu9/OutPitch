@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -31,7 +32,7 @@ export function MarketingNav() {
             <li key={link.href}>
               <a
                 href={link.href}
-                className="rounded-full px-3.5 py-1.5 text-sm text-text-secondary transition-colors hover:text-white"
+                className="rounded-full px-3.5 py-1.5 text-sm text-text-secondary transition-colors hover:text-foreground"
               >
                 {link.label}
               </a>
@@ -40,6 +41,7 @@ export function MarketingNav() {
         </ul>
 
         <div className="hidden items-center gap-2 md:flex">
+          <ThemeToggle />
           <Link href="/sign-in">
             <Button variant="ghost" size="sm">
               Log in
@@ -50,19 +52,22 @@ export function MarketingNav() {
           </Link>
         </div>
 
-        <button
-          type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-white md:hidden"
-          onClick={() => setOpen(!open)}
-          aria-label={open ? "Close menu" : "Open menu"}
-        >
-          {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle compact />
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground"
+            onClick={() => setOpen(!open)}
+            aria-label={open ? "Close menu" : "Open menu"}
+          >
+            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
       </nav>
 
       <div
         className={cn(
-          "absolute top-full mt-2 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-border bg-bg-elevated p-4 transition-all md:hidden",
+          "absolute top-full mt-2 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-border bg-bg-elevated p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all md:hidden",
           open
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
@@ -74,7 +79,7 @@ export function MarketingNav() {
               <a
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-white"
+                className="block rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-foreground"
               >
                 {link.label}
               </a>

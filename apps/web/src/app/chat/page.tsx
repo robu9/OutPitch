@@ -205,8 +205,8 @@ export default function ChatPage() {
                 onClick={() => selectSession(s.id)}
                 className={`group flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
                   active
-                    ? "bg-bg-surface text-white"
-                    : "text-text-secondary hover:bg-bg-hover hover:text-white"
+                    ? "bg-bg-surface text-foreground"
+                    : "text-text-secondary hover:bg-bg-hover hover:text-foreground"
                 }`}
               >
                 <MessageSquare className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -215,7 +215,7 @@ export default function ChatPage() {
                   role="button"
                   tabIndex={0}
                   onClick={(e) => deleteSession(s.id, e)}
-                  className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-white transition-opacity shrink-0"
+                  className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-foreground transition-opacity shrink-0"
                   aria-label="Delete chat"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -252,7 +252,7 @@ export default function ChatPage() {
               </div>
             ) : messages.length === 0 ? (
               <div className="py-12">
-                <h2 className="text-xl font-medium text-white">
+                <h2 className="text-xl font-medium text-foreground">
                   How can I help with your search?
                 </h2>
                 <p className="mt-2 max-w-lg text-sm text-text-secondary text-pretty">
@@ -268,7 +268,7 @@ export default function ChatPage() {
                         setInput(s);
                         inputRef.current?.focus();
                       }}
-                      className="rounded-xl border border-border bg-bg-elevated px-4 py-3 text-left text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-white"
+                      className="rounded-xl border border-border bg-bg-elevated px-4 py-3 text-left text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
                     >
                       {s}
                     </button>
@@ -285,8 +285,8 @@ export default function ChatPage() {
                     <div
                       className={
                         msg.role === "user"
-                          ? "max-w-[85%] rounded-2xl rounded-br-md bg-white px-4 py-3 text-sm text-[#050505]"
-                          : "max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-bg-elevated px-4 py-3 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap"
+                          ? "max-w-[85%] rounded-2xl rounded-br-md chat-user-bubble px-4 py-3 text-sm"
+                          : "max-w-[85%] rounded-2xl rounded-bl-md chat-assistant-bubble px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
                       }
                     >
                       {msg.content ||
@@ -318,7 +318,7 @@ export default function ChatPage() {
               placeholder="Ask Outpitch anything..."
               disabled={streaming}
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-border bg-bg-surface px-4 py-3 text-sm text-white placeholder:text-text-secondary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-white/10 disabled:opacity-50"
+              className="flex-1 resize-none rounded-xl border border-border bg-bg-base px-4 py-3 text-sm text-foreground placeholder:text-text-secondary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-foreground/10 disabled:opacity-50"
               style={{ minHeight: "44px", maxHeight: "120px" }}
             />
             <Button
@@ -328,7 +328,7 @@ export default function ChatPage() {
               aria-label="Send message"
             >
               {streaming ? (
-                <Spinner className="h-4 w-4 text-[#050505]" />
+                <Spinner className="h-4 w-4 text-[var(--btn-primary-fg)]" />
               ) : (
                 <Send className="h-4 w-4" />
               )}

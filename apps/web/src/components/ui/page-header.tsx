@@ -19,7 +19,7 @@ export function PageHeader({
       )}
     >
       <div>
-        <h1 className="text-lg font-medium tracking-tight text-white">{title}</h1>
+        <h1 className="text-lg font-medium tracking-tight text-foreground">{title}</h1>
         {description && (
           <p className="mt-1 text-sm text-text-secondary">{description}</p>
         )}

@@ -123,7 +123,7 @@ export default function CompaniesPage() {
                             [company.id]: !prev[company.id],
                           }))
                         }
-                        className={`mt-1 shrink-0 text-text-secondary ${hasContacts ? "hover:text-white" : "invisible"}`}
+                        className={`mt-1 shrink-0 text-text-secondary ${hasContacts ? "hover:text-foreground" : "invisible"}`}
                         aria-expanded={isOpen}
                       >
                         {isOpen ? (
@@ -135,14 +135,14 @@ export default function CompaniesPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-sm font-medium text-white">
+                          <h3 className="text-sm font-medium text-foreground">
                             {company.name}
                           </h3>
                           <a
                             href={`https://${company.domain}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-white"
+                            className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-foreground"
                           >
                             {company.domain}
                             <ExternalLink className="h-3 w-3" aria-hidden />
@@ -167,8 +167,8 @@ export default function CompaniesPage() {
                           onClick={() => sendFeedback(company.id, "good")}
                           className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
                             feedbackSent[company.id] === "good"
-                              ? "border-white bg-white text-[#050505]"
-                              : "border-border text-text-secondary hover:text-white"
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-border text-text-secondary hover:text-foreground"
                           }`}
                           aria-label="Good match"
                         >
@@ -179,8 +179,8 @@ export default function CompaniesPage() {
                           onClick={() => sendFeedback(company.id, "bad")}
                           className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
                             feedbackSent[company.id] === "bad"
-                              ? "border-white bg-bg-surface text-white"
-                              : "border-border text-text-secondary hover:text-white"
+                              ? "border-foreground bg-bg-surface text-foreground"
+                              : "border-border text-text-secondary hover:text-foreground"
                           }`}
                           aria-label="Not a fit"
                         >
@@ -201,7 +201,7 @@ export default function CompaniesPage() {
                               className="flex flex-col gap-1 rounded-lg border border-border bg-bg-elevated p-3 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div>
-                                <span className="text-sm text-white">{contact.name}</span>
+                                <span className="text-sm text-foreground">{contact.name}</span>
                                 {contact.title && (
                                   <span className="text-sm text-text-secondary">
                                     {" "}

@@ -68,8 +68,8 @@ export function InteractiveDemo() {
                     <div
                       className={
                         msg.role === "user"
-                          ? "max-w-[85%] rounded-2xl rounded-br-md bg-white px-4 py-3 text-sm text-[#050505]"
-                          : "max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-bg-surface px-4 py-3 text-sm text-text-secondary"
+                          ? "max-w-[85%] rounded-2xl rounded-br-md chat-user-bubble px-4 py-3 text-sm"
+                          : "max-w-[85%] rounded-2xl rounded-bl-md chat-assistant-bubble px-4 py-3 text-sm"
                       }
                     >
                       {msg.text}

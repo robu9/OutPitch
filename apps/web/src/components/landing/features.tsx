@@ -40,7 +40,7 @@ const features = [
         {["Retool", "Linear", "Stripe"].map((n, i) => (
           <div
             key={n}
-            className="flex-1 rounded-lg border border-border bg-bg-base py-4 text-center text-xs text-white"
+            className="flex-1 rounded-lg border border-border bg-bg-base py-4 text-center text-xs text-foreground"
             style={{ opacity: 1 - i * 0.15 }}
           >
             {n}
@@ -90,7 +90,7 @@ const features = [
             key={s.label}
             className="rounded-lg border border-border bg-bg-base py-3 text-center"
           >
-            <p className="text-lg font-medium text-white">{s.val}</p>
+            <p className="text-lg font-medium text-foreground">{s.val}</p>
             <p className="text-[10px] text-text-secondary">{s.label}</p>
           </div>
         ))}
@@ -126,8 +126,8 @@ export function Features() {
                 ease: [0.16, 1, 0.3, 1],
               }}
             >
-              <f.icon className="h-5 w-5 text-white" aria-hidden />
-              <h3 className="mt-4 text-base font-medium text-white">{f.title}</h3>
+              <f.icon className="h-5 w-5 text-foreground" aria-hidden />
+              <h3 className="mt-4 text-base font-medium text-foreground">{f.title}</h3>
               <p className="mt-2 text-sm text-text-secondary text-pretty">
                 {f.description}
               </p>

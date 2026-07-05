@@ -52,9 +52,9 @@ export function HowSolves() {
               whileHover={reduced ? undefined : { y: -2 }}
             >
               <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-surface">
-                <Check className="h-4 w-4 text-white" aria-hidden />
+                <Check className="h-4 w-4 text-foreground" aria-hidden />
               </div>
-              <h3 className="text-base font-medium text-white">{s.title}</h3>
+              <h3 className="text-base font-medium text-foreground">{s.title}</h3>
               <p className="mt-2 text-sm text-text-secondary text-pretty">
                 {s.description}
               </p>

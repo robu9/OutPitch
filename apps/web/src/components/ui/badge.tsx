@@ -2,8 +2,9 @@ import { cn } from "@/lib/utils";
 
 const variants = {
   default: "bg-bg-surface text-text-secondary border-border",
-  primary: "bg-white text-[#050505] border-transparent",
-  outline: "bg-transparent text-text-secondary border-border",
+  primary: "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] border-transparent",
+  outline: "bg-bg-base text-text-secondary border-border",
+  highlight: "bg-bg-base text-foreground border-foreground",
 };
 
 export function Badge({

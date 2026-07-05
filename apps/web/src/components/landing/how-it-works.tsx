@@ -17,7 +17,7 @@ const steps = [
           (line) => (
             <div
               key={line}
-              className="rounded-lg border border-border bg-bg-surface px-4 py-3 text-sm text-white"
+              className="rounded-lg border border-border bg-bg-surface px-4 py-3 text-sm text-foreground"
             >
               {line}
             </div>
@@ -42,7 +42,7 @@ const steps = [
             key={co.name}
             className="flex items-center justify-between rounded-lg border border-border bg-bg-surface px-4 py-3"
           >
-            <span className="text-sm text-white">{co.name}</span>
+            <span className="text-sm text-foreground">{co.name}</span>
             <span className="text-xs text-text-secondary">{co.score}% match</span>
           </div>
         ))}
@@ -64,7 +64,7 @@ const steps = [
             key={c.name}
             className="rounded-lg border border-border bg-bg-surface px-4 py-3"
           >
-            <p className="text-sm text-white">{c.name}</p>
+            <p className="text-sm text-foreground">{c.name}</p>
             <p className="text-xs text-text-secondary">{c.title}</p>
           </div>
         ))}
@@ -137,8 +137,8 @@ export function HowItWorks() {
                   className={cn(
                     "block w-full rounded-lg px-4 py-3 text-left text-sm transition-colors",
                     active === i
-                      ? "bg-bg-surface text-white"
-                      : "text-text-secondary hover:text-white"
+                      ? "bg-bg-surface text-foreground"
+                      : "text-text-secondary hover:text-foreground"
                   )}
                 >
                   <span className="mr-2 text-text-secondary">{i + 1}.</span>
@@ -157,7 +157,7 @@ export function HowItWorks() {
                 }}
               >
                 <Reveal>
-                  <h3 className="text-xl font-medium text-white lg:hidden">
+                  <h3 className="text-xl font-medium text-foreground lg:hidden">
                     {step.title}
                   </h3>
                   <p className="mt-2 max-w-lg text-sm text-text-secondary text-pretty lg:mt-0">

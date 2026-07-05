@@ -19,23 +19,20 @@ export function Hero() {
 
   return (
     <section className="relative w-full overflow-hidden pt-12 pb-8 md:pt-16 md:pb-12">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        aria-hidden
-      >
-        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-white/[0.02] blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
+        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full hero-glow blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-5xl px-5 text-center md:px-8">
         <Reveal>
-          <Badge className="mb-6 gap-1.5 px-3 py-1">
+          <Badge variant="outline" className="mb-6 gap-1.5 px-3 py-1">
             <Layers className="h-3 w-3" aria-hidden />
             Outreach that remembers you
           </Badge>
         </Reveal>
 
         <Reveal delay={0.05}>
-          <h1 className="text-4xl font-medium tracking-[-0.03em] text-white text-balance sm:text-5xl md:text-6xl md:leading-[1.08]">
+          <h1 className="text-4xl font-medium tracking-[-0.03em] text-foreground text-balance sm:text-5xl md:text-6xl md:leading-[1.08]">
             Land your next role
             <br />
             with intelligent outreach
@@ -67,14 +64,13 @@ export function Hero() {
         </Reveal>
       </div>
 
-      {/* Live product canvas */}
       <Reveal delay={0.2} className="relative mx-auto mt-14 max-w-5xl px-4 md:px-8">
         <div className="surface-card overflow-hidden rounded-2xl md:rounded-3xl">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-border bg-bg-base px-4 py-3">
             <div className="flex gap-1.5" aria-hidden>
-              <span className="h-2.5 w-2.5 rounded-full bg-[#2a2a2a]" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[#2a2a2a]" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[#2a2a2a]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--window-dot)]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--window-dot)]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--window-dot)]" />
             </div>
             <span className="ml-2 text-xs text-text-secondary">
               Outpitch — Active search
@@ -82,11 +78,11 @@ export function Hero() {
           </div>
 
           <div className="grid gap-0 md:grid-cols-[1fr_280px]">
-            <div className="border-b border-border p-5 md:border-b-0 md:border-r">
+            <div className="border-b border-border bg-bg-base p-5 md:border-b-0 md:border-r">
               <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
                 Your request
               </p>
-              <p className="mt-2 text-sm text-white">
+              <p className="mt-2 text-sm text-foreground">
                 Find Series A–C startups hiring frontend engineers in NYC. Draft
                 outreach to engineering leaders.
               </p>
@@ -108,7 +104,7 @@ export function Hero() {
                       <span className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-[10px] font-medium text-text-secondary">
                         {i + 1}
                       </span>
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {step.label}
                       </span>
                     </div>
@@ -132,7 +128,7 @@ export function Hero() {
                 ].map((item, i) => (
                   <motion.div
                     key={item}
-                    className="rounded-lg border border-border bg-bg-elevated px-3 py-2 text-xs text-text-secondary"
+                    className="rounded-lg border border-border bg-bg-base px-3 py-2 text-xs text-text-secondary"
                     initial={reduced ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.8 + i * 0.1 }}

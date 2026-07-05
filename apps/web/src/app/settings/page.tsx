@@ -208,7 +208,7 @@ export default function SettingsPage() {
           {error && (
             <div
               role="alert"
-              className="flex items-start gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 text-sm text-white"
+              className="flex items-start gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 text-sm text-foreground"
             >
               <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
               {error}
@@ -216,7 +216,7 @@ export default function SettingsPage() {
           )}
 
           <section>
-            <h2 className="text-sm font-medium text-white">Connections</h2>
+            <h2 className="text-sm font-medium text-foreground">Connections</h2>
             <p className="mt-1 text-sm text-text-secondary">
               Link accounts to power discovery and outreach.
             </p>
@@ -274,7 +274,7 @@ export default function SettingsPage() {
                     </div>
                   ) : (
                     <Button size="sm" onClick={connectLinkedIn} disabled={loading !== null}>
-                      {loading === "linkedin-connect" && <Spinner className="h-3.5 w-3.5 text-[#050505]" />}
+                      {loading === "linkedin-connect" && <Spinner className="h-3.5 w-3.5 text-[var(--btn-primary-fg)]" />}
                       Connect
                     </Button>
                   )
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                     </Button>
                   ) : (
                     <Button size="sm" onClick={connectGmail} disabled={loading !== null}>
-                      {loading === "gmail-connect" && <Spinner className="h-3.5 w-3.5 text-[#050505]" />}
+                      {loading === "gmail-connect" && <Spinner className="h-3.5 w-3.5 text-[var(--btn-primary-fg)]" />}
                       Connect
                     </Button>
                   )
@@ -309,7 +309,7 @@ export default function SettingsPage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-medium text-white">WhatsApp</h2>
+            <h2 className="text-sm font-medium text-foreground">WhatsApp</h2>
             <p className="mt-1 text-sm text-text-secondary">
               Chat with Outpitch from your phone.
             </p>
@@ -317,7 +317,7 @@ export default function SettingsPage() {
             <div className="mt-4 rounded-xl border border-border bg-bg-elevated p-5">
               <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-surface">
-                  <MessageCircle className="h-5 w-5 text-white" aria-hidden />
+                  <MessageCircle className="h-5 w-5 text-foreground" aria-hidden />
                 </div>
                 <div className="flex-1">
                   {status.whatsappVerified && (
@@ -336,14 +336,14 @@ export default function SettingsPage() {
                       onClick={linkWhatsApp}
                       disabled={loading !== null || !whatsappInput.trim()}
                     >
-                      {loading === "whatsapp-link" && <Spinner className="h-3.5 w-3.5 text-[#050505]" />}
+                      {loading === "whatsapp-link" && <Spinner className="h-3.5 w-3.5 text-[var(--btn-primary-fg)]" />}
                       {status.whatsappVerified ? "Re-link" : "Link"}
                     </Button>
                   </div>
                   {whatsappCode && !status.whatsappVerified && (
                     <p className="mt-3 text-sm text-text-secondary">
                       Text this code to finish linking:{" "}
-                      <strong className="text-white tracking-widest">{whatsappCode}</strong>
+                      <strong className="text-foreground tracking-widest">{whatsappCode}</strong>
                     </p>
                   )}
                 </div>
@@ -352,7 +352,7 @@ export default function SettingsPage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-medium text-white">Cognee memory</h2>
+            <h2 className="text-sm font-medium text-foreground">Cognee memory</h2>
             <p className="mt-1 text-sm text-text-secondary">
               Your profile, research, and conversations stored as a knowledge graph.
             </p>
@@ -360,7 +360,7 @@ export default function SettingsPage() {
             <div className="mt-4 rounded-xl border border-border bg-bg-elevated p-5">
               <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-surface">
-                  <Brain className="h-5 w-5 text-white" aria-hidden />
+                  <Brain className="h-5 w-5 text-foreground" aria-hidden />
                 </div>
                 <ul className="space-y-2 text-sm text-text-secondary">
                   {[
@@ -369,7 +369,7 @@ export default function SettingsPage() {
                     "Conversation history",
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-white" aria-hidden />
+                      <CheckCircle2 className="h-4 w-4 text-foreground" aria-hidden />
                       {item}
                     </li>
                   ))}
@@ -403,14 +403,14 @@ function ConnectionRow({
       <div className="flex items-start gap-4">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
-            connected ? "border-white bg-bg-surface" : "border-border bg-bg-base"
+            connected ? "border-foreground bg-bg-surface" : "border-border bg-bg-base"
           }`}
         >
-          <Icon className="h-5 w-5 text-white" aria-hidden />
+          <Icon className="h-5 w-5 text-foreground" aria-hidden />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-white">{name}</h3>
+            <h3 className="text-sm font-medium text-foreground">{name}</h3>
             {badge && <Badge variant="outline">{badge}</Badge>}
           </div>
           <p className="mt-1 text-sm text-text-secondary text-pretty">{description}</p>

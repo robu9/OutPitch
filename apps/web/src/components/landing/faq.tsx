@@ -52,7 +52,7 @@ export function FAQ() {
                 className="overflow-hidden rounded-xl border border-border bg-bg-elevated"
               >
                 <Accordion.Header>
-                  <Accordion.Trigger className="group flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-white transition-colors hover:bg-bg-hover">
+                  <Accordion.Trigger className="group flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-foreground transition-colors hover:bg-bg-hover">
                     {faq.q}
                     <ChevronDown
                       className="h-4 w-4 shrink-0 text-text-secondary transition-transform duration-200 group-data-[state=open]:rotate-180"
