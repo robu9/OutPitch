@@ -319,6 +319,31 @@ export async function sendEmail(
   return result.data as Record<string, unknown>;
 }
 
+// Fetch the connected Gmail account's own address (the user's email id).
+export async function getGmailAddress(userId: string): Promise<string | null> {
+  const composio = getComposio();
+  try {
+    const result = await composio.tools.execute("GMAIL_GET_PROFILE", {
+      userId,
+      arguments: {},
+      dangerouslySkipVersionCheck: true,
+    });
+    const data = result.data as Record<string, unknown> | undefined;
+    // Composio response shapes vary; probe the common spots, then regex-fallback.
+    const nested = (data?.response_data ?? data?.profile ?? data) as Record<string, unknown> | undefined;
+    const direct =
+      (nested?.emailAddress as string) ??
+      (nested?.email as string) ??
+      (data?.emailAddress as string);
+    if (typeof direct === "string" && direct.includes("@")) return direct;
+    const match = JSON.stringify(data ?? {}).match(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/);
+    return match?.[0] ?? null;
+  } catch (error) {
+    console.warn("Gmail profile fetch failed:", error);
+    return null;
+  }
+}
+
 export async function fetchEmails(userId: string, limit = 20) {
   const composio = getComposio();
   try {

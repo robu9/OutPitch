@@ -68,7 +68,7 @@ function stripMarkdown(text: string): string {
 }
 
 function buildProfileContext(
-  user: { name: string | null; linkedinConnected: boolean } | null,
+  user: { name: string | null; email?: string | null; linkedinConnected: boolean } | null,
   profile: {
     headline?: string | null;
     summary?: string | null;
@@ -83,6 +83,7 @@ function buildProfileContext(
 
   const parts: string[] = [];
   if (user?.name) parts.push(`Name: ${user.name}`);
+  if (user?.email) parts.push(`Email: ${user.email}`);
   if (user?.linkedinConnected) parts.push("LinkedIn: connected");
   if (profile?.headline) parts.push(`Headline: ${profile.headline}`);
   if (profile?.targetRole) parts.push(`Target role: ${profile.targetRole}`);

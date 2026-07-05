@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { SignOutButton, UserButton } from "@clerk/nextjs";
+import { usePathname, useRouter } from "next/navigation";
+import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
 import {
   Building2,
   LogOut,
@@ -12,8 +12,9 @@ import {
   PanelLeftClose,
   Settings,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
+import { apiFetch } from "@/lib/api";
 import { ensureGsap, gsap, useGSAP } from "@/lib/gsap-config";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +33,22 @@ export function AppShell({
   sidebar?: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useUser();
   const [collapsed, setCollapsed] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
+
+  // Gate: send users who haven't finished onboarding to the wizard. Runs in the
+  // background (no loader) since onboarded users are the common case; uses the
+  // lightweight DB-only /me endpoint so it doesn't trigger the slow /status call.
+  useEffect(() => {
+    if (!user) return;
+    apiFetch<{ onboardingDone: boolean }>("/api/onboarding/me", { clerkUserId: user.id })
+      .then((s) => {
+        if (!s.onboardingDone) router.replace("/onboarding");
+      })
+      .catch(() => {});
+  }, [user, router]);
 
   useGSAP(
     () => {

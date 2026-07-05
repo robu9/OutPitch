@@ -9,6 +9,7 @@ import {
   getLinkedInAuthUrl,
   checkConnectionStatus,
   disconnectToolkit,
+  getGmailAddress,
 } from "../services/composio.js";
 import { ingestUserProfile } from "../services/cognee.js";
 import {
@@ -94,6 +95,17 @@ async function ensureLinkedInSynced(userId: string, clerkId: string, linkedinCon
   return true;
 }
 
+// Backfill the user's own email from the connected Gmail account if we don't have it.
+async function ensureUserEmail(userId: string, clerkId: string, gmailConnected: boolean) {
+  if (!gmailConnected) return;
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user?.email) return;
+  const email = await getGmailAddress(clerkId);
+  if (email) {
+    await prisma.user.update({ where: { id: userId }, data: { email } });
+  }
+}
+
 router.get(
   "/status",
   requireAuth,
@@ -107,6 +119,12 @@ router.get(
           connections.linkedin
         )
       : false;
+
+    if (connections.gmail) {
+      await ensureUserEmail(req.auth!.userId, req.auth!.clerkId, connections.gmail).catch((e) =>
+        console.warn("ensureUserEmail failed:", e)
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: req.auth!.userId },
@@ -125,6 +143,20 @@ router.get(
       profile: user?.profile,
       ...(synced ? { linkedinJustSynced: true } : {}),
     });
+  })
+);
+
+// Lightweight onboarding-status check (DB only, no Composio) — used by the app
+// shell to gate un-onboarded users into the wizard without the slow /status call.
+router.get(
+  "/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.auth!.userId },
+      select: { onboardingDone: true },
+    });
+    res.json({ onboardingDone: user?.onboardingDone ?? false });
   })
 );
 

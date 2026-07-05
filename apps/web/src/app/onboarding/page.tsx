@@ -17,6 +17,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
@@ -36,14 +37,16 @@ export default function OnboardingPage() {
     }>("/api/onboarding/status", { clerkUserId: user.id })
       .then((status) => {
         // Returning users who already finished onboarding skip the wizard.
+        // Keep `checking` true so the loader stays through the redirect (no flash).
         if (status.onboardingDone) {
           router.replace("/chat");
           return;
         }
         setLinkedinConnected(status.linkedinConnected);
         setGmailConnected(status.gmailConnected);
+        setChecking(false);
       })
-      .catch(() => {});
+      .catch(() => setChecking(false));
   }, [user, router]);
 
   async function connectLinkedIn() {
@@ -108,6 +111,16 @@ export default function OnboardingPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Show a loader (not the wizard) until we know whether the user is onboarded,
+  // so returning users never see a flash of the onboarding page before redirect.
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg-base">
+        <Spinner className="h-6 w-6 text-foreground" />
+      </div>
+    );
   }
 
   return (
