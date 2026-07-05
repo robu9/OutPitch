@@ -125,6 +125,13 @@ router.get(
       include: { profile: true },
     });
 
+    if (user && user.gmailConnected !== connections.gmail) {
+      await prisma.user.update({
+        where: { id: req.auth!.userId },
+        data: { gmailConnected: connections.gmail },
+      });
+    }
+
     res.json({
       onboardingDone: user?.onboardingDone ?? false,
       linkedinConnected,

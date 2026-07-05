@@ -3,7 +3,7 @@ import { SendEmailPayloadSchema } from "@outpitch/types";
 import { prisma } from "@outpitch/db";
 import { asyncHandler, AppError } from "../middleware/error.js";
 import { requireAuth } from "../middleware/auth.js";
-import { fetchEmails } from "../services/composio.js";
+import { fetchEmails, checkConnectionStatus } from "../services/composio.js";
 import { sendOutreachCampaign } from "../services/outreach-send.js";
 
 const router = Router();
@@ -28,15 +28,24 @@ router.post(
     const payload = SendEmailPayloadSchema.parse(req.body);
     const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
 
-    if (!user?.gmailConnected) {
+    // Settings reads Composio live; the DB flag can lag after OAuth — trust Composio here.
+    const connections = await checkConnectionStatus(req.auth!.clerkId);
+    if (!connections.gmail) {
       throw new AppError(400, "Gmail not connected", "GMAIL_NOT_CONNECTED");
+    }
+
+    if (user && !user.gmailConnected) {
+      await prisma.user.update({
+        where: { id: req.auth!.userId },
+        data: { gmailConnected: true },
+      });
     }
 
     const result = await sendOutreachCampaign(
       req.auth!.userId,
       req.auth!.clerkId,
       payload,
-      { cogneeToken: user.cogneeToken ?? undefined }
+      { cogneeToken: user?.cogneeToken ?? undefined }
     );
 
     res.json(result);
