@@ -5,15 +5,34 @@ import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/ui/page-header";
-import { streamChat, apiFetch, type ChatSession } from "@/lib/api";
+import {
+  streamChat,
+  apiFetch,
+  fetchPipelineStatus,
+  type ChatSession,
+  type PipelineStatus,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Send, Plus, Trash2, MessageSquare } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Send,
+  Plus,
+  Trash2,
+  MessageSquare,
+  Building2,
+  Mail,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Search,
+} from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  jobId?: string;
 }
 
 const suggestions = [
@@ -48,14 +67,25 @@ export default function ChatPage() {
       if (!user) return;
       setHistoryLoaded(false);
       const query = sid ? `?sessionId=${encodeURIComponent(sid)}` : "";
-      const data = await apiFetch<{ messages: Array<{ id: string; role: string; content: string }> }>(
+      type HistoryMsg = {
+        id: string;
+        role: string;
+        content: string;
+        metadata?: { jobId?: string } | null;
+      };
+      const data = await apiFetch<{ messages: HistoryMsg[] }>(
         `/api/chat/history${query}`,
         { clerkUserId: user.id }
-      ).catch(() => ({ messages: [] as Array<{ id: string; role: string; content: string }> }));
+      ).catch(() => ({ messages: [] as HistoryMsg[] }));
       setMessages(
         data.messages
           .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
+          .map((m) => ({
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            jobId: m.metadata?.jobId,
+          }))
       );
       setHistoryLoaded(true);
     },
@@ -163,6 +193,11 @@ export default function ChatPage() {
           sessionId: sessionId ?? undefined,
           onSession: (sid) => {
             if (!sessionId) setSessionId(sid);
+          },
+          onJob: (jobId) => {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantId ? { ...m, jobId } : m))
+            );
           },
         }
       );
@@ -285,7 +320,7 @@ export default function ChatPage() {
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={msg.role === "user" ? "flex justify-end" : ""}
+                    className={msg.role === "user" ? "flex justify-end" : "space-y-2"}
                   >
                     <div
                       className={
@@ -302,6 +337,9 @@ export default function ChatPage() {
                           </span>
                         ) : null)}
                     </div>
+                    {msg.role === "assistant" && msg.jobId && (
+                      <PipelineCard jobId={msg.jobId} clerkUserId={user?.id ?? null} />
+                    )}
                   </div>
                 ))}
               </div>
@@ -342,5 +380,169 @@ export default function ChatPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+const TERMINAL = new Set(["completed", "failed"]);
+
+function PipelineCard({
+  jobId,
+  clerkUserId,
+}: {
+  jobId: string;
+  clerkUserId: string | null;
+}) {
+  const [status, setStatus] = useState<PipelineStatus | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!clerkUserId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const poll = async () => {
+      try {
+        const s = await fetchPipelineStatus(jobId, clerkUserId);
+        if (!active) return;
+        setStatus(s);
+        if (!TERMINAL.has(s.status)) {
+          timer = setTimeout(poll, 2000);
+        }
+      } catch {
+        if (active) timer = setTimeout(poll, 3000);
+      }
+    };
+    poll();
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [jobId, clerkUserId]);
+
+  const companies = status?.companies ?? [];
+  const done = status ? TERMINAL.has(status.status) : false;
+  const failed = status?.status === "failed";
+
+  return (
+    <div className="max-w-[85%] rounded-xl border border-border bg-bg-elevated overflow-hidden">
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-2.5">
+        <Search className="h-4 w-4 text-text-secondary" aria-hidden />
+        <span className="text-xs font-medium text-foreground">Company search</span>
+        {!done && <Spinner className="h-3.5 w-3.5" />}
+        {done && !failed && (
+          <Badge variant="outline">{companies.length} found</Badge>
+        )}
+        {failed && <Badge variant="outline">failed</Badge>}
+        <Link
+          href="/companies"
+          className="ml-auto text-xs text-text-secondary hover:text-foreground"
+        >
+          View pipeline →
+        </Link>
+      </div>
+
+      {/* Progress while running */}
+      {!done && (
+        <div className="px-4 py-3">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg-base">
+            <div
+              className="h-full rounded-full bg-foreground transition-all duration-500"
+              style={{ width: `${status?.progress ?? 5}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-text-secondary">
+            {status?.message ?? "Starting search…"}
+          </p>
+        </div>
+      )}
+
+      {failed && (
+        <div className="px-4 py-3 text-xs text-text-secondary">
+          {status?.error ?? "Search failed. Please try again."}
+        </div>
+      )}
+
+      {/* Results */}
+      {done && !failed && companies.length === 0 && (
+        <div className="px-4 py-3 text-xs text-text-secondary">
+          No matching companies found — try broadening the role or location.
+        </div>
+      )}
+
+      {done && !failed && companies.length > 0 && (
+        <ul className="divide-y divide-border">
+          {companies.map((c) => {
+            const isOpen = expanded[c.id];
+            const contacts = c.contacts ?? [];
+            const hasContacts = contacts.length > 0;
+            return (
+              <li key={c.id} className="px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      hasContacts &&
+                      setExpanded((p) => ({ ...p, [c.id]: !p[c.id] }))
+                    }
+                    className={`mt-0.5 shrink-0 text-text-secondary ${hasContacts ? "hover:text-foreground" : "invisible"}`}
+                    aria-expanded={isOpen}
+                  >
+                    {isOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Building2 className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
+                      <span className="text-sm font-medium text-foreground">{c.name}</span>
+                      <a
+                        href={`https://${c.domain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-foreground"
+                      >
+                        {c.domain}
+                        <ExternalLink className="h-3 w-3" aria-hidden />
+                      </a>
+                      <Badge variant="outline">{c.matchScore}% match</Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {hasContacts ? `${contacts.length} contact${contacts.length > 1 ? "s" : ""}` : "Contacts pending"}
+                    </p>
+
+                    {isOpen && hasContacts && (
+                      <ul className="mt-2 space-y-1.5">
+                        {contacts.map((ct, i) => (
+                          <li
+                            key={ct.id ?? `${ct.name}-${i}`}
+                            className="flex flex-col gap-0.5 rounded-lg border border-border bg-bg-base p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <span className="text-xs text-foreground">
+                              {ct.name}
+                              {ct.title && (
+                                <span className="text-text-secondary"> · {ct.title}</span>
+                              )}
+                            </span>
+                            {ct.email && (
+                              <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary">
+                                <Mail className="h-3 w-3" aria-hidden />
+                                {ct.email}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }

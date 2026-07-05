@@ -23,6 +23,7 @@ import {
   MIN_MATCH_SCORE,
 } from "../services/company-matcher.js";
 import { getQueueConnection } from "../lib/redis.js";
+import { sendWhatsAppMessage } from "../services/whatsapp.js";
 
 // Cast: the repo resolves two ioredis versions, so the ioredis instance and
 // BullMQ's bundled ioredis type don't line up structurally. BullMQ accepts the
@@ -37,6 +38,8 @@ interface PipelineJobData {
   clerkId: string;
   params: CompanySearchParams;
   cogneeToken?: string;
+  // If set, the search was started from WhatsApp — push results to this number on completion.
+  whatsappNumber?: string;
 }
 
 async function updateJob(
@@ -54,7 +57,8 @@ export async function enqueueCompanyPipeline(
   userId: string,
   clerkId: string,
   params: CompanySearchParams,
-  cogneeToken?: string
+  cogneeToken?: string,
+  whatsappNumber?: string
 ) {
   const job = await prisma.pipelineJob.create({
     data: {
@@ -71,6 +75,7 @@ export async function enqueueCompanyPipeline(
     clerkId,
     params,
     cogneeToken,
+    whatsappNumber,
   });
 
   return job;
@@ -100,8 +105,23 @@ const COMPANY_CONCURRENCY = 3;
 const VERIFY_CONCURRENCY = 4;
 const MAX_PEOPLE_PER_COMPANY = 3;
 
+function formatWhatsAppResults(role: string, results: Array<{ name: string; domain: string; matchScore: number; contacts: Array<{ name: string; title?: string; email: string }> }>): string {
+  if (results.length === 0) {
+    return `No strong matches for "${role}" yet. Try broadening the role or location and search again.`;
+  }
+  const lines = results.slice(0, 5).map((c, i) => {
+    const header = `${i + 1}. ${c.name} (${c.domain}) — ${c.matchScore}% match`;
+    const contact = c.contacts[0];
+    const contactLine = contact
+      ? `\n   ${contact.name}${contact.title ? `, ${contact.title}` : ""}${contact.email ? ` — ${contact.email}` : ""}`
+      : "";
+    return header + contactLine;
+  });
+  return `Found ${results.length} companies for "${role}":\n\n${lines.join("\n\n")}`;
+}
+
 async function processPipeline(job: Job<PipelineJobData>) {
-  const { jobId, userId, clerkId, params, cogneeToken } = job.data;
+  const { jobId, userId, clerkId, params, cogneeToken, whatsappNumber } = job.data;
 
   try {
     await updateJob(jobId, {
@@ -442,10 +462,23 @@ async function processPipeline(job: Job<PipelineJobData>) {
       result: results,
     });
 
+    // If the search was started from WhatsApp, push the results back to that number.
+    if (whatsappNumber) {
+      await sendWhatsAppMessage(whatsappNumber, formatWhatsAppResults(params.role, results)).catch(
+        (err) => console.warn("WhatsApp results push failed:", err)
+      );
+    }
+
     return results;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Pipeline failed";
     await updateJob(jobId, { status: "failed", error: message });
+    if (whatsappNumber) {
+      await sendWhatsAppMessage(
+        whatsappNumber,
+        `Sorry, the company search for "${params.role}" failed. Please try again.`
+      ).catch(() => {});
+    }
     throw error;
   }
 }

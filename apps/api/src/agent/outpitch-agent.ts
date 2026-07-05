@@ -248,6 +248,11 @@ export interface AgentContext {
   userId: string;
   clerkId: string;
   cogneeToken?: string;
+  // Called when a company-search pipeline is enqueued, so callers (e.g. the chat
+  // route) can surface the jobId to the client and render live results.
+  onSearchStarted?: (jobId: string) => void;
+  // Set when the agent is running from WhatsApp — results get pushed back to this number.
+  whatsappNumber?: string;
 }
 
 async function executeTool(
@@ -289,8 +294,10 @@ async function executeTool(
         ctx.userId,
         ctx.clerkId,
         params,
-        ctx.cogneeToken
+        ctx.cogneeToken,
+        ctx.whatsappNumber
       );
+      ctx.onSearchStarted?.(job.id);
       return JSON.stringify({
         message: "Company search started",
         jobId: job.id,

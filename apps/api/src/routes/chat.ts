@@ -128,6 +128,7 @@ router.post(
     res.write(`data: ${JSON.stringify({ type: "session", sessionId: session.id, title: session.title })}\n\n`);
 
     let fullResponse = "";
+    let startedJobId: string | null = null;
 
     try {
       const agentHistory = history
@@ -138,6 +139,12 @@ router.post(
         userId: req.auth!.userId,
         clerkId: req.auth!.clerkId,
         cogneeToken: user?.cogneeToken ?? undefined,
+        onSearchStarted: (jobId) => {
+          startedJobId = jobId;
+          // Surface the job to the client the moment the search starts so the UI
+          // can render a live results card inline in the chat.
+          res.write(`data: ${JSON.stringify({ type: "job", jobId })}\n\n`);
+        },
       })) {
         // Strip the internal "[Using tool: X]" progress markers so they aren't
         // shown to the user, saved to history, or replayed into the model.
@@ -153,6 +160,7 @@ router.post(
           sessionId: session.id,
           role: "assistant",
           content: fullResponse,
+          ...(startedJobId ? { metadata: { jobId: startedJobId } } : {}),
         },
       });
 

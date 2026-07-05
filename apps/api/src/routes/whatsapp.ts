@@ -190,6 +190,8 @@ async function processMessage(from: string, text: string): Promise<void> {
       userId: user.id,
       clerkId: user.clerkId,
       cogneeToken: user.cogneeToken ?? undefined,
+      // Search results (which run async in the background) get pushed back here.
+      whatsappNumber: from,
     })) {
       reply += chunk;
     }

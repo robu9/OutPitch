@@ -34,7 +34,11 @@ export async function streamChat(
   onChunk: (chunk: string) => void,
   onDone: () => void,
   onError: (error: string) => void,
-  options: { sessionId?: string; onSession?: (sessionId: string, title: string) => void } = {}
+  options: {
+    sessionId?: string;
+    onSession?: (sessionId: string, title: string) => void;
+    onJob?: (jobId: string) => void;
+  } = {}
 ) {
   try {
     const response = await fetch(`${API_URL}/api/chat`, {
@@ -66,6 +70,7 @@ export async function streamChat(
           try {
             const data = JSON.parse(line.slice(6));
             if (data.type === "session") options.onSession?.(data.sessionId, data.title);
+            if (data.type === "job") options.onJob?.(data.jobId);
             if (data.type === "chunk") onChunk(data.content);
             if (data.type === "done") onDone();
             if (data.type === "error") onError(data.content);
@@ -87,4 +92,37 @@ export interface ChatSession {
   title: string;
   updatedAt: string;
   createdAt: string;
+}
+
+export interface PipelineContact {
+  id?: string;
+  name: string;
+  title?: string;
+  email?: string;
+  source?: string;
+  confidence?: number;
+}
+
+export interface PipelineCompany {
+  id: string;
+  name: string;
+  domain: string;
+  description?: string;
+  matchScore: number;
+  matchReason?: string;
+  contacts?: PipelineContact[];
+  sourceUrl?: string;
+}
+
+export interface PipelineStatus {
+  jobId: string;
+  status: "queued" | "searching" | "crawling" | "enriching" | "completed" | "failed" | string;
+  progress: number;
+  message?: string | null;
+  companies?: PipelineCompany[] | null;
+  error?: string | null;
+}
+
+export function fetchPipelineStatus(jobId: string, clerkUserId: string) {
+  return apiFetch<PipelineStatus>(`/api/chat/pipeline/${jobId}`, { clerkUserId });
 }
