@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Reveal } from "@/components/motion/reveal";
+import { GsapReveal } from "@/components/motion/gsap-reveal";
 
 const pipelineSteps = [
   { label: "Discover", status: "3 companies matched" },
@@ -18,39 +18,40 @@ export function Hero() {
   const reduced = useReducedMotion();
 
   return (
-    <section className="relative w-full overflow-hidden pt-12 pb-8 md:pt-16 md:pb-12">
-      <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
-        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full hero-glow blur-3xl" />
-      </div>
-
+    <section
+      className="relative w-full overflow-hidden pt-12 pb-8 md:pt-16 md:pb-12"
+    >
       <div className="relative mx-auto max-w-5xl px-5 text-center md:px-8">
-        <Reveal>
-          <Badge variant="outline" className="mb-6 gap-1.5 px-3 py-1">
+        <GsapReveal immediate>
+          <Badge
+            variant="outline"
+            className="mb-6 gap-1.5 border-[var(--accent-blue-soft)]/40 bg-[var(--accent-blue-glow)] px-3 py-1 text-[var(--accent-blue)]"
+          >
             <Layers className="h-3 w-3" aria-hidden />
             Outreach that remembers you
           </Badge>
-        </Reveal>
+        </GsapReveal>
 
-        <Reveal delay={0.05}>
+        <GsapReveal delay={0.05} immediate>
           <h1 className="text-4xl font-medium tracking-[-0.03em] text-foreground text-balance sm:text-5xl md:text-6xl md:leading-[1.08]">
             Land your next role
             <br />
             with intelligent outreach
           </h1>
-        </Reveal>
+        </GsapReveal>
 
-        <Reveal delay={0.1}>
+        <GsapReveal delay={0.1} immediate>
           <p className="mx-auto mt-5 max-w-xl text-base text-text-secondary text-pretty sm:text-lg">
             Outpitch finds companies hiring for your role, surfaces the right
             contacts, and drafts outreach that gets better every session — powered
             by persistent memory.
           </p>
-        </Reveal>
+        </GsapReveal>
 
-        <Reveal delay={0.15}>
+        <GsapReveal delay={0.15} immediate>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/sign-up">
-              <Button size="lg">
+              <Button variant="accent" size="lg" className="btn-accent-glow">
                 Start free
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -61,11 +62,14 @@ export function Hero() {
               </Button>
             </a>
           </div>
-        </Reveal>
+        </GsapReveal>
       </div>
 
-      <Reveal delay={0.2} className="relative mx-auto mt-14 max-w-5xl px-4 md:px-8">
-        <div className="surface-card overflow-hidden rounded-2xl md:rounded-3xl">
+      <GsapReveal delay={0.2} immediate className="relative mx-auto mt-14 max-w-5xl px-4 md:px-8">
+        <div
+          data-float-card
+          className="surface-card overflow-hidden rounded-2xl md:rounded-3xl"
+        >
           <div className="flex items-center gap-2 border-b border-border bg-bg-base px-4 py-3">
             <div className="flex gap-1.5" aria-hidden>
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--window-dot)]" />
@@ -101,7 +105,7 @@ export function Hero() {
                     }}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-[10px] font-medium text-text-secondary">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--accent-blue)]/30 bg-[var(--accent-blue-glow)] text-[10px] font-medium text-[var(--accent-blue)]">
                         {i + 1}
                       </span>
                       <span className="text-sm font-medium text-foreground">
@@ -143,7 +147,7 @@ export function Hero() {
             </div>
           </div>
         </div>
-      </Reveal>
+      </GsapReveal>
     </section>
   );
 }

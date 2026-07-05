@@ -16,6 +16,19 @@
 
   --link: #2563eb;
 
+  --accent-blue: #3b6df6;
+  --accent-blue-soft: #acc3f7;
+  --accent-blue-glow: rgba(59, 109, 246, 0.18);
+  --hero-radial-stop: rgba(172, 195, 247, 0.55);
+  --orb-1: rgba(59, 109, 246, 0.22);
+  --orb-2: rgba(172, 195, 247, 0.4);
+  --orb-3: rgba(59, 109, 246, 0.12);
+
+  --btn-accent-bg: #3b6df6;
+  --btn-accent-fg: #ffffff;
+  --btn-accent-hover: #2f5bd4;
+  --btn-accent-glow: 0 8px 32px -8px rgba(59, 109, 246, 0.45);
+
   --background: var(--bg-base);
   --foreground: var(--text-primary);
   --muted-foreground: var(--text-secondary);
@@ -35,13 +48,17 @@
 
   --nav-pill-bg: rgba(255, 255, 255, 0.85);
   --nav-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --nav-pill-shadow-scrolled:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 8px 32px -8px rgba(59, 109, 246, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.06);
 
   --surface-card-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.03) inset,
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 12px 40px -12px rgba(0, 0, 0, 0.08);
 
-  --hero-glow: rgba(0, 0, 0, 0.03);
+  --hero-glow: rgba(59, 109, 246, 0.08);
   --dot-color: #e5e5e5;
   --window-dot: #d4d4d4;
 
@@ -55,11 +72,11 @@
   --chat-assistant-fg: #525252;
 
   --graph-stroke: #e5e5e5;
-  --graph-stroke-active: #0a0a0a;
-  --graph-node-active-bg: #0a0a0a;
+  --graph-stroke-active: var(--accent-blue);
+  --graph-node-active-bg: var(--accent-blue);
   --graph-node-active-fg: #ffffff;
 
-  --logo-mark-bg: #0a0a0a;
+  --logo-mark-bg: var(--accent-blue);
   --logo-mark-fg: #ffffff;
 
   --marquee-fade: var(--bg-elevated);
@@ -91,6 +108,19 @@
 
   --link: #60a5fa;
 
+  --accent-blue: #5b8af7;
+  --accent-blue-soft: #1e3a8a;
+  --accent-blue-glow: rgba(59, 109, 246, 0.35);
+  --hero-radial-stop: rgba(30, 58, 138, 0.65);
+  --orb-1: rgba(59, 109, 246, 0.28);
+  --orb-2: rgba(96, 165, 250, 0.18);
+  --orb-3: rgba(59, 109, 246, 0.14);
+
+  --btn-accent-bg: #5b8af7;
+  --btn-accent-fg: #ffffff;
+  --btn-accent-hover: #4a7ae6;
+  --btn-accent-glow: 0 8px 40px -8px rgba(59, 109, 246, 0.5);
+
   --background: var(--bg-base);
   --foreground: var(--text-primary);
   --muted-foreground: var(--text-secondary);
@@ -110,12 +140,15 @@
 
   --nav-pill-bg: rgba(10, 10, 10, 0.8);
   --nav-pill-shadow: none;
+  --nav-pill-shadow-scrolled:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 8px 40px -12px rgba(59, 109, 246, 0.25);
 
   --surface-card-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.03) inset,
     0 24px 64px -24px rgba(0, 0, 0, 0.8);
 
-  --hero-glow: rgba(255, 255, 255, 0.02);
+  --hero-glow: rgba(59, 109, 246, 0.15);
   --dot-color: #2a2a2a;
   --window-dot: #2a2a2a;
 
@@ -129,12 +162,12 @@
   --chat-assistant-fg: #a3a3a3;
 
   --graph-stroke: #2a2a2a;
-  --graph-stroke-active: #ffffff;
-  --graph-node-active-bg: #ffffff;
-  --graph-node-active-fg: #050505;
+  --graph-stroke-active: var(--accent-blue);
+  --graph-node-active-bg: var(--accent-blue);
+  --graph-node-active-fg: #ffffff;
 
-  --logo-mark-bg: #ffffff;
-  --logo-mark-fg: #050505;
+  --logo-mark-bg: var(--accent-blue);
+  --logo-mark-fg: #ffffff;
 
   --marquee-fade: var(--bg-elevated);
 }
@@ -154,6 +187,7 @@
   --color-bg-hover: var(--bg-hover);
   --color-text-secondary: var(--text-secondary);
   --color-link: var(--link);
+  --color-accent-blue: var(--accent-blue);
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 2px);
@@ -209,6 +243,33 @@ body {
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   border: 1px solid var(--border);
   box-shadow: var(--nav-pill-shadow);
+  transition:
+    box-shadow 0.35s var(--ease-out),
+    border-color 0.35s var(--ease-out),
+    transform 0.35s var(--ease-out);
+}
+
+.nav-pill.nav-scrolled {
+  border-color: var(--border-strong);
+  box-shadow: var(--nav-pill-shadow-scrolled);
+}
+
+.hero-radial {
+  background: radial-gradient(
+    125% 125% at 50% 10%,
+    var(--bg-base) 40%,
+    var(--hero-radial-stop) 100%
+  );
+}
+
+.btn-accent-glow {
+  box-shadow: var(--btn-accent-glow);
+}
+
+.btn-accent-glow:hover {
+  box-shadow:
+    var(--btn-accent-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 .surface-card {

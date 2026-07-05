@@ -26,7 +26,7 @@ const problems = [
 
 export function WhyFails() {
   return (
-    <section className="border-y border-border bg-bg-elevated py-20 md:py-28">
+    <section data-section-reveal className="border-y border-border bg-bg-elevated py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
           <Reveal>

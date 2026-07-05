@@ -58,7 +58,7 @@ export function Pricing() {
   const [yearly, setYearly] = useState(false);
 
   return (
-    <section id="pricing" className="py-20 md:py-28">
+    <section id="pricing" data-section-reveal className="py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
           <SectionHeading
@@ -98,18 +98,18 @@ export function Pricing() {
         </Reveal>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {plans.map((plan, i) => (
-            <Reveal key={plan.name} delay={0.1 + i * 0.05}>
+          {plans.map((plan) => (
+            <div key={plan.name} data-stagger-item>
               <div
                 className={cn(
                   "flex h-full flex-col rounded-2xl border p-6",
                   plan.highlighted
-                    ? "border-foreground bg-bg-base shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                    ? "border-[var(--accent-blue)]/40 bg-bg-base shadow-[var(--btn-accent-glow)]"
                     : "border-border bg-bg-elevated"
                 )}
               >
                 {plan.highlighted && (
-                  <span className="mb-4 inline-flex w-fit rounded-full border border-border bg-bg-base px-2.5 py-0.5 text-xs text-text-secondary">
+                  <span className="mb-4 inline-flex w-fit rounded-full border border-[var(--accent-blue)]/30 bg-[var(--accent-blue-glow)] px-2.5 py-0.5 text-xs text-[var(--accent-blue)]">
                     Popular
                   </span>
                 )}
@@ -129,21 +129,21 @@ export function Pricing() {
                       key={f}
                       className="flex items-start gap-2 text-sm text-text-secondary"
                     >
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" aria-hidden />
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-blue)]" aria-hidden />
                       {f}
                     </li>
                   ))}
                 </ul>
                 <Link href="/sign-up" className="mt-8 block">
                   <Button
-                    variant={plan.highlighted ? "primary" : "outline"}
-                    className="w-full"
+                    variant={plan.highlighted ? "accent" : "outline"}
+                    className={cn("w-full", plan.highlighted && "btn-accent-glow")}
                   >
                     {plan.cta}
                   </Button>
                 </Link>
               </div>
-            </Reveal>
+            </div>
           ))}
         </div>
       </div>

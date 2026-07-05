@@ -34,7 +34,7 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="border-t border-border py-20 md:py-28">
+    <section id="faq" data-section-reveal className="border-t border-border py-20 md:py-28">
       <div className="mx-auto max-w-2xl px-5 md:px-8">
         <Reveal>
           <SectionHeading

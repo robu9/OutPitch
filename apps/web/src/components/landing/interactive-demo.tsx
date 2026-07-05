@@ -38,7 +38,7 @@ export function InteractiveDemo() {
   }, [visible, reduced]);
 
   return (
-    <section id="demo" className="py-20 md:py-28">
+    <section id="demo" data-section-reveal className="py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
           <SectionHeading
@@ -48,7 +48,7 @@ export function InteractiveDemo() {
         </Reveal>
 
         <Reveal delay={0.1} className="mt-14">
-          <div className="surface-card overflow-hidden rounded-2xl">
+          <div data-float-card className="surface-card overflow-hidden rounded-2xl">
             <div className="border-b border-border px-5 py-3">
               <span className="text-xs text-text-secondary">Live conversation</span>
             </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
 import {
   Building2,
   Mail,
@@ -100,10 +99,8 @@ const features = [
 ];
 
 export function Features() {
-  const reduced = useReducedMotion();
-
   return (
-    <section id="features" className="py-20 md:py-28">
+    <section id="features" data-section-reveal className="py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
           <SectionHeading
@@ -113,26 +110,19 @@ export function Features() {
         </Reveal>
 
         <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {features.map((f, i) => (
-            <motion.div
+          {features.map((f) => (
+            <div
               key={f.title}
-              className={`rounded-2xl border border-border bg-bg-elevated p-6 transition-colors hover:border-border-strong ${f.span}`}
-              initial={reduced ? false : { opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{
-                delay: i * 0.05,
-                duration: 0.5,
-                ease: [0.16, 1, 0.3, 1],
-              }}
+              data-stagger-item
+              className={`rounded-2xl border border-border bg-bg-elevated p-6 transition-colors hover:border-[var(--accent-blue)]/30 ${f.span}`}
             >
-              <f.icon className="h-5 w-5 text-foreground" aria-hidden />
+              <f.icon className="h-5 w-5 text-[var(--accent-blue)]" aria-hidden />
               <h3 className="mt-4 text-base font-medium text-foreground">{f.title}</h3>
               <p className="mt-2 text-sm text-text-secondary text-pretty">
                 {f.description}
               </p>
               {f.demo}
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

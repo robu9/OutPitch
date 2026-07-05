@@ -1,3 +1,4 @@
+import { LandingShell } from "@/components/landing/landing-shell";
 import { MarketingNav } from "@/components/landing/nav";
 import { Hero } from "@/components/landing/hero";
 import { LogoBar } from "@/components/landing/logo-bar";
@@ -15,7 +16,7 @@ import { MarketingFooter } from "@/components/landing/footer";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-bg-base text-foreground">
+    <LandingShell>
       <MarketingNav />
       <main>
         <Hero />
@@ -32,6 +33,6 @@ export default function HomePage() {
         <LandingCta />
       </main>
       <MarketingFooter />
-    </div>
+    </LandingShell>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ensureGsap, gsap, ScrollTrigger, useGSAP } from "@/lib/gsap-config";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -18,21 +19,59 @@ const links = [
 
 export function MarketingNav() {
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  useGSAP(
+    () => {
+      ensureGsap();
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduced) return;
+
+      const nav = navRef.current;
+      const header = headerRef.current;
+      if (!nav || !header) return;
+
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.from(header, { y: -32, opacity: 0, duration: 0.75 });
+      tl.from(
+        nav.querySelectorAll("[data-nav-item]"),
+        { y: -10, opacity: 0, duration: 0.45, stagger: 0.06 },
+        "-=0.4"
+      );
+
+      ScrollTrigger.create({
+        start: 0,
+        end: "max",
+        onUpdate: () => {
+          const scrolled = window.scrollY > 48;
+          nav.classList.toggle("nav-scrolled", scrolled);
+        },
+      });
+    },
+    { scope: headerRef }
+  );
 
   return (
-    <header className="sticky top-6 z-[var(--z-sticky)] mx-4 flex justify-center md:mx-0">
+    <header
+      ref={headerRef}
+      className="sticky top-6 z-[var(--z-sticky)] mx-4 flex justify-center md:mx-0"
+    >
       <nav
+        ref={navRef}
         className="nav-pill flex w-full max-w-4xl items-center justify-between rounded-full px-4 py-2.5 md:px-5"
         aria-label="Main"
       >
-        <Logo size="sm" />
+        <div data-nav-item>
+          <Logo size="sm" />
+        </div>
 
         <ul className="hidden items-center gap-1 md:flex">
           {links.map((link) => (
-            <li key={link.href}>
+            <li key={link.href} data-nav-item>
               <a
                 href={link.href}
-                className="rounded-full px-3.5 py-1.5 text-sm text-text-secondary transition-colors hover:text-foreground"
+                className="rounded-full px-3.5 py-1.5 text-sm text-text-secondary transition-colors hover:text-[var(--accent-blue)]"
               >
                 {link.label}
               </a>
@@ -41,15 +80,23 @@ export function MarketingNav() {
         </ul>
 
         <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle />
-          <Link href="/sign-in">
-            <Button variant="ghost" size="sm">
-              Log in
-            </Button>
-          </Link>
-          <Link href="/sign-up">
-            <Button size="sm">Get started</Button>
-          </Link>
+          <div data-nav-item>
+            <ThemeToggle />
+          </div>
+          <div data-nav-item>
+            <Link href="/sign-in">
+              <Button variant="ghost" size="sm">
+                Log in
+              </Button>
+            </Link>
+          </div>
+          <div data-nav-item>
+            <Link href="/sign-up">
+              <Button variant="accent" size="sm" className="btn-accent-glow">
+                Get started
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -93,7 +140,7 @@ export function MarketingNav() {
             </Button>
           </Link>
           <Link href="/sign-up" onClick={() => setOpen(false)}>
-            <Button size="md" className="w-full">
+            <Button variant="accent" size="md" className="w-full btn-accent-glow">
               Get started
             </Button>
           </Link>

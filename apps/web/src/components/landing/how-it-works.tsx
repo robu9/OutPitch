@@ -112,7 +112,7 @@ export function HowItWorks() {
   }, [reduced]);
 
   return (
-    <section id="how-it-works" className="py-20 md:py-28">
+    <section id="how-it-works" data-section-reveal className="py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
           <SectionHeading
