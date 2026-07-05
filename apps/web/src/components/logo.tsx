@@ -26,7 +26,7 @@ function BrandMark({
   className?: string;
   variant?: "brand" | "app";
 }) {
-  const fill = variant === "app" ? "var(--btn-primary-bg)" : "var(--accent-blue)";
+  const fill = "var(--accent-blue)";
   const arrow = "#ffffff";
 
   return (
