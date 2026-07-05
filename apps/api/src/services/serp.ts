@@ -100,6 +100,87 @@ function buildEmployerSearchQueries(params: CompanySearchParams): string[] {
   ];
 }
 
+export async function searchCompaniesWithPerplexity(params: CompanySearchParams): Promise<Array<{
+  name: string;
+  domain: string;
+  description: string;
+  sourceUrl: string;
+}>> {
+  if (!config.perplexityApiKey) {
+    console.warn("PERPLEXITY_API_KEY not set for Perplexity company search");
+    return [];
+  }
+
+  const prompt = `You are an expert company discovery agent. Find and recommend real, existing companies that are actively hiring or likely employers for the following role and preferences. Use your web search capabilities to find accurate, up-to-date, and active job postings or hiring companies.
+
+Role: ${params.role}
+Location: ${params.location ?? "Any"}
+Industry: ${params.industry ?? "Any"}
+Company Size: ${params.companySize ?? "Any"}
+Keywords/Preferences: ${(params.keywords ?? []).join(", ") || "None"}
+
+Rules:
+- Recommend ONLY real, actual companies with valid, operational domains (e.g. "stripe.com", "vercel.com").
+- Avoid generic placeholders or fake websites.
+- Provide a concise description of what they do and why they match.
+- For each company, provide a valid "sourceUrl" (like their careers page or main domain, e.g. "https://stripe.com/careers" or "https://stripe.com").
+- NEVER recommend recruitment agencies, staffing firms, or job boards (e.g. indeed, glassdoor, linkedin, upwork).
+- Return a JSON object with a single "companies" key containing an array of up to ${params.limit || 10} companies:
+{
+  "companies": [
+    {
+      "name": "Company Name",
+      "domain": "companydomain.com",
+      "description": "Short description of company",
+      "sourceUrl": "https://companydomain.com/careers"
+    }
+  ]
+}`;
+
+  try {
+    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${config.perplexityApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        messages: [
+          { role: "system", content: "You are an expert company discovery agent that outputs ONLY structured JSON." },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" }
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.warn(`Perplexity API error ${response.status}: ${errText}`);
+      return [];
+    }
+
+    const data = await response.json() as {
+      choices?: Array<{
+        message?: {
+          content?: string;
+        };
+      }>;
+    };
+
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return [];
+
+    const parsed = JSON.parse(content) as {
+      companies?: Array<{ name: string; domain: string; description: string; sourceUrl: string }>;
+    };
+    return parsed.companies ?? [];
+  } catch (error) {
+    console.error("[serp] Perplexity company search failed:", error);
+    return [];
+  }
+}
+
 export async function searchCompanies(params: CompanySearchParams) {
   const fetchLimit = Math.min(params.limit * 3, 30);
   const queries = buildEmployerSearchQueries(params);
@@ -113,11 +194,34 @@ export async function searchCompanies(params: CompanySearchParams) {
 
   const seenDomains = new Set<string>();
 
-  // Run the query variants in parallel, then dedupe by domain.
-  const resultSets = await Promise.all(
-    queries.map((query) => serpSearch(query, fetchLimit).catch(() => []))
-  );
+  // Run the query variants and Perplexity search in parallel!
+  const [resultSets, perplexityResults] = await Promise.all([
+    Promise.all(queries.map((query) => serpSearch(query, fetchLimit).catch(() => []))),
+    searchCompaniesWithPerplexity(params).catch(() => []),
+  ]);
 
+  // First, add Perplexity results (they are highly targeted and freshly researched online)
+  for (const result of perplexityResults) {
+    let domain = result.domain.trim().toLowerCase();
+    if (domain.includes("://")) {
+      const extracted = extractDomain(domain);
+      if (extracted) domain = extracted;
+    }
+    domain = domain.replace(/^www\./, "");
+
+    if (!domain || seenDomains.has(domain)) continue;
+    if (BLOCKED_SEARCH_DOMAINS.some((blocked) => domain.includes(blocked))) continue;
+
+    seenDomains.add(domain);
+    companies.push({
+      name: result.name,
+      domain,
+      description: result.description,
+      sourceUrl: result.sourceUrl,
+    });
+  }
+
+  // Then add Serper results
   for (const results of resultSets) {
     for (const result of results) {
       const domain = extractDomain(result.link);

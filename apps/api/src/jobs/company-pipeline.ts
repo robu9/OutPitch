@@ -360,7 +360,7 @@ async function processPipeline(job: Job<PipelineJobData>) {
       .slice(0, params.limit);
 
     await remember(
-      `Job search for ${params.role}: matched ${results.length} companies from memory — ${results.map((r) => `${r.name} (${r.matchScore}%)`).join(", ")}`,
+      `Job search for ${params.role}: discovered and matched ${results.length} companies — ${results.map((r) => `${r.name} (${r.matchScore}%)`).join(", ")}`,
       { dataset: userDataset(clerkId), token: cogneeToken }
     );
 
