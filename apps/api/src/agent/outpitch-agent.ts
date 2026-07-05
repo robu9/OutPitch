@@ -4,7 +4,7 @@ import {
   SchemaType,
 } from "@google/generative-ai";
 import { config } from "../config.js";
-import { prisma, type Prisma } from "@outpitch/db";
+import { prisma } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import {
   remember,
@@ -56,15 +56,21 @@ Company discovery (critical — follow every time):
 Post-search outreach (critical):
 - After searchCompanies starts, tell the user results are loading in the background.
 - When search results are ready (user sees companies or says yes to outreach), ask exactly once: "Want me to draft outreach emails for the top matches?"
-- Do not draft or send emails until the user explicitly says yes.
-- If they say yes, call getSearchResults (with the jobId if you have it), then draftEmail for the best contact at each top company (up to 3). Show each draft and confirm before sendEmail.
+- Do not draft or send emails until the user explicitly says yes (or asks to draft for specific companies).
+- When drafting, always call getSearchResults first (with jobId if you have it), then draftEmail once per company — best contact at each company.
+- How many companies to draft (read the user's latest message):
+  - No count or scope given (e.g. "yes", "draft emails", "Yes, Draft emails") → top 3 companies by match score (default).
+  - A number (e.g. "draft 5", "top 2") → that many from the top of the results list, capped at how many companies returned.
+  - "all" / "everyone" / "all of them" / "every company" → every company in getSearchResults (all matches from that search).
+  - A specific company name (e.g. "draft for FlyBank", "just Retool and Vercel") → only companies whose name matches (case-insensitive; partial match OK). If none match, say so and offer the closest names from results.
+- Show each draft in your reply and confirm before sendEmail. Never send without explicit confirmation.
 
 Guidelines:
 - If the user asks about stored context and the profile snapshot is insufficient, call recall first
 - Never claim you lack LinkedIn profile data when it is present in context
 - LinkedIn posts/activity are not ingested — only basic profile fields. Say so honestly if asked about posts
 - Be proactive about suggesting companies and contacts
-- For outreach, call draftEmail to generate the email body (Gemini writes it). Show the draft and ask for confirmation before sendEmail.
+- For outreach, call draftEmail once per target company (Gemini writes each body). Respect the user's scope: default top 3, a stated number, all results, or named companies only. Show every draft and ask for confirmation before sendEmail.
 - Never send emails without explicit user confirmation`;
 
 /**
@@ -165,7 +171,8 @@ const tools: FunctionDeclaration[] = [
   },
   {
     name: "draftEmail",
-    description: "Draft a personalized outreach email",
+    description:
+      "Draft one personalized outreach email for a single company/contact. Call once per company; default 3 companies unless the user asked for all, a number, or specific names.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -275,6 +282,16 @@ const tools: FunctionDeclaration[] = [
   },
 ];
 
+export interface EmailDraftPayload {
+  campaignId: string;
+  to: string;
+  subject: string;
+  body: string;
+  contactName?: string;
+  companyName?: string;
+  companyId?: string;
+}
+
 export interface AgentContext {
   userId: string;
   clerkId: string;
@@ -282,6 +299,8 @@ export interface AgentContext {
   // Called when a company-search pipeline is enqueued, so callers (e.g. the chat
   // route) can surface the jobId to the client and render live results.
   onSearchStarted?: (jobId: string) => void;
+  // Called when draftEmail completes so the client can render send buttons.
+  onEmailDrafted?: (draft: EmailDraftPayload) => void;
   // Set when the agent is running from WhatsApp — results get pushed back to this number.
   whatsappNumber?: string;
 }
@@ -377,11 +396,12 @@ async function executeTool(
         jobId: status.jobId,
         status: status.status,
         message: status.message,
+        companyCount: companies.length,
         companies,
         outreachPrompt: "Want me to draft outreach emails for the top matches?",
         hint:
           companies.length > 0
-            ? "Ask outreachPrompt if not already asked. If user said yes, draftEmail for top contacts (max 3 companies)."
+            ? `Companies are ordered by match score (highest first). Draft scope from the user's message: default top 3; or N if they gave a number; all ${companies.length} if they said all/everyone; only named companies if they named one or more. Call draftEmail once per selected company with companyId and best contact.`
             : "No matches — suggest broadening search. Do not offer outreach.",
       });
     }
@@ -453,21 +473,27 @@ async function executeTool(
 
       const campaign = await prisma.outreachCampaign.create({
         data: {
-          userId: ctx.userId,
-          companyId: companyId ?? null,
-          contactId: contact?.id ?? null,
+          user: { connect: { id: ctx.userId } },
+          ...(companyId ? { company: { connect: { id: companyId } } } : {}),
+          ...(contact?.id ? { contact: { connect: { id: contact.id } } } : {}),
           subject: draft.subject,
           body: draft.body,
           status: "draft",
-        } as Prisma.OutreachCampaignUncheckedCreateInput,
+        },
       });
 
-      return JSON.stringify({
-        ...draft,
+      const payload: EmailDraftPayload = {
         campaignId: campaign.id,
+        to: draft.to,
+        subject: draft.subject,
+        body: draft.body,
         contactName,
-        companyName: args.companyName,
-      });
+        companyName: args.companyName as string,
+        companyId,
+      };
+      ctx.onEmailDrafted?.(payload);
+
+      return JSON.stringify(payload);
     }
 
     case "sendEmail": {
@@ -477,15 +503,16 @@ async function executeTool(
         body: args.body as string,
       });
 
+      const companyId = args.companyId as string | undefined;
       const campaign = await prisma.outreachCampaign.create({
         data: {
-          userId: ctx.userId,
-          companyId: (args.companyId as string | undefined) ?? null,
+          user: { connect: { id: ctx.userId } },
+          ...(companyId ? { company: { connect: { id: companyId } } } : {}),
           subject: args.subject as string,
           body: args.body as string,
           status: "sent",
           sentAt: new Date(),
-        } as Prisma.OutreachCampaignUncheckedCreateInput,
+        },
       });
 
       await remember(

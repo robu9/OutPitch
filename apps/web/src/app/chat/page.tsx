@@ -9,8 +9,10 @@ import {
   streamChat,
   apiFetch,
   fetchPipelineStatus,
+  sendOutreachEmail,
   type ChatSession,
   type PipelineStatus,
+  type OutreachDraft,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +35,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   jobId?: string;
+  drafts?: OutreachDraft[];
 }
 
 const suggestions = [
@@ -71,7 +74,7 @@ export default function ChatPage() {
         id: string;
         role: string;
         content: string;
-        metadata?: { jobId?: string } | null;
+        metadata?: { jobId?: string; drafts?: OutreachDraft[] } | null;
       };
       const data = await apiFetch<{ messages: HistoryMsg[] }>(
         `/api/chat/history${query}`,
@@ -85,6 +88,7 @@ export default function ChatPage() {
             role: m.role as "user" | "assistant",
             content: m.content,
             jobId: m.metadata?.jobId,
+            drafts: m.metadata?.drafts,
           }))
       );
       setHistoryLoaded(true);
@@ -197,6 +201,15 @@ export default function ChatPage() {
           onJob: (jobId) => {
             setMessages((prev) =>
               prev.map((m) => (m.id === assistantId ? { ...m, jobId } : m))
+            );
+          },
+          onDraft: (draft) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, drafts: [...(m.drafts ?? []), draft] }
+                  : m
+              )
             );
           },
         }
@@ -341,13 +354,16 @@ export default function ChatPage() {
                       <PipelineCard
                         jobId={msg.jobId}
                         clerkUserId={user?.id ?? null}
-                        onDraftOutreach={(jobId) =>
-                          handleSend(
-                            undefined,
-                            `Yes — draft outreach emails for the top matches from my search (job ${jobId})`
-                          )
+                        onDraftOutreach={() =>
+                          handleSend(undefined, "Yes, Draft emails")
                         }
                         outreachDisabled={streaming}
+                      />
+                    )}
+                    {msg.role === "assistant" && (msg.drafts?.length ?? 0) > 0 && (
+                      <EmailDraftsCard
+                        drafts={msg.drafts!}
+                        clerkUserId={user?.id ?? null}
                       />
                     )}
                   </div>
@@ -575,6 +591,190 @@ function PipelineCard({
             Yes, draft emails
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function EmailDraftsCard({
+  drafts,
+  clerkUserId,
+}: {
+  drafts: OutreachDraft[];
+  clerkUserId: string | null;
+}) {
+  const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendingAll, setSendingAll] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!clerkUserId || drafts.length === 0) return;
+    const ids = new Set(drafts.map((d) => d.campaignId));
+    apiFetch<{ campaigns: { id: string; status: string }[] }>("/api/outreach", {
+      clerkUserId,
+    })
+      .then((data) => {
+        const alreadySent = data.campaigns
+          .filter((c) => ids.has(c.id) && (c.status === "sent" || c.status === "replied"))
+          .map((c) => c.id);
+        if (alreadySent.length > 0) {
+          setSentIds((prev) => new Set([...prev, ...alreadySent]));
+        }
+      })
+      .catch(() => {});
+  }, [clerkUserId, drafts]);
+
+  const pending = drafts.filter(
+    (d) => !sentIds.has(d.campaignId) && isValidEmail(d.to)
+  );
+  const hasInvalid = drafts.some((d) => !isValidEmail(d.to));
+
+  async function sendOne(draft: OutreachDraft, trackSending = true) {
+    if (!clerkUserId) return false;
+    if (trackSending) setSendingId(draft.campaignId);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[draft.campaignId];
+      return next;
+    });
+    try {
+      await sendOutreachEmail(clerkUserId, {
+        to: draft.to,
+        subject: draft.subject,
+        body: draft.body,
+        campaignId: draft.campaignId,
+        companyId: draft.companyId,
+      });
+      setSentIds((prev) => new Set(prev).add(draft.campaignId));
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send";
+      setErrors((prev) => ({ ...prev, [draft.campaignId]: message }));
+      return false;
+    } finally {
+      if (trackSending) setSendingId(null);
+    }
+  }
+
+  async function sendAll() {
+    if (!clerkUserId || pending.length === 0) return;
+    setSendingAll(true);
+    for (const draft of pending) {
+      await sendOne(draft, false);
+    }
+    setSendingAll(false);
+  }
+
+  return (
+    <div className="max-w-[85%] space-y-2">
+      {drafts.map((draft) => {
+        const sent = sentIds.has(draft.campaignId);
+        const invalid = !isValidEmail(draft.to);
+        const sending = sendingId === draft.campaignId || sendingAll;
+        const error = errors[draft.campaignId];
+
+        return (
+          <div
+            key={draft.campaignId}
+            className="rounded-xl border border-border bg-bg-elevated overflow-hidden"
+          >
+            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+              <Mail className="h-4 w-4 text-text-secondary" aria-hidden />
+              <span className="text-xs font-medium text-foreground">
+                {draft.companyName ? `Draft · ${draft.companyName}` : "Email draft"}
+              </span>
+              {sent && <Badge variant="primary">Sent</Badge>}
+              {invalid && !sent && <Badge variant="outline">No email</Badge>}
+            </div>
+            <div className="space-y-2 px-4 py-3 text-xs">
+              <p className="text-text-secondary">
+                To:{" "}
+                <span className="text-foreground">
+                  {draft.contactName ? `${draft.contactName} · ` : ""}
+                  {draft.to}
+                </span>
+              </p>
+              <p className="text-text-secondary">
+                Subject: <span className="text-foreground">{draft.subject}</span>
+              </p>
+              <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+                {draft.body}
+              </p>
+              {error && (
+                <p className="text-xs text-red-500">
+                  {error.includes("Gmail not connected") ? (
+                    <>
+                      Connect Gmail in{" "}
+                      <Link href="/settings" className="underline">
+                        settings
+                      </Link>{" "}
+                      to send.
+                    </>
+                  ) : (
+                    error
+                  )}
+                </p>
+              )}
+              {!sent && (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={invalid || sending || !clerkUserId || sent}
+                  onClick={() => {
+                    if (!sent) void sendOne(draft);
+                  }}
+                  className="mt-1"
+                >
+                  {sending ? (
+                    <>
+                      <Spinner className="h-3.5 w-3.5" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      Send email
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {pending.length > 1 && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={sendingAll || sendingId !== null || !clerkUserId}
+          onClick={sendAll}
+          className="w-full"
+        >
+          {sendingAll ? (
+            <>
+              <Spinner className="h-3.5 w-3.5" />
+              Sending {pending.length} emails...
+            </>
+          ) : (
+            <>
+              <Send className="h-3.5 w-3.5" />
+              Send all ({pending.length})
+            </>
+          )}
+        </Button>
+      )}
+
+      {hasInvalid && (
+        <p className="text-xs text-text-secondary px-1">
+          Some drafts are missing a contact email — add one in Companies before sending.
+        </p>
       )}
     </div>
   );

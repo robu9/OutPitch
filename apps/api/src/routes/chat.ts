@@ -129,6 +129,15 @@ router.post(
 
     let fullResponse = "";
     let startedJobId: string | null = null;
+    const emailDrafts: Array<{
+      campaignId: string;
+      to: string;
+      subject: string;
+      body: string;
+      contactName?: string;
+      companyName?: string;
+      companyId?: string;
+    }> = [];
 
     try {
       const agentHistory = history
@@ -145,6 +154,10 @@ router.post(
           // can render a live results card inline in the chat.
           res.write(`data: ${JSON.stringify({ type: "job", jobId })}\n\n`);
         },
+        onEmailDrafted: (draft) => {
+          emailDrafts.push(draft);
+          res.write(`data: ${JSON.stringify({ type: "draft", draft })}\n\n`);
+        },
       })) {
         // Strip the internal "[Using tool: X]" progress markers so they aren't
         // shown to the user, saved to history, or replayed into the model.
@@ -154,13 +167,17 @@ router.post(
         res.write(`data: ${JSON.stringify({ type: "chunk", content: clean })}\n\n`);
       }
 
+      const metadata: { jobId?: string; drafts?: typeof emailDrafts } = {};
+      if (startedJobId) metadata.jobId = startedJobId;
+      if (emailDrafts.length > 0) metadata.drafts = emailDrafts;
+
       await prisma.chatMessage.create({
         data: {
           userId: req.auth!.userId,
           sessionId: session.id,
           role: "assistant",
           content: fullResponse,
-          ...(startedJobId ? { metadata: { jobId: startedJobId } } : {}),
+          ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
         },
       });
 

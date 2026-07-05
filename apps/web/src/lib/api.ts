@@ -28,6 +28,16 @@ export async function apiFetch<T>(
   return response.json();
 }
 
+export interface OutreachDraft {
+  campaignId: string;
+  to: string;
+  subject: string;
+  body: string;
+  contactName?: string;
+  companyName?: string;
+  companyId?: string;
+}
+
 export async function streamChat(
   message: string,
   clerkUserId: string,
@@ -38,6 +48,7 @@ export async function streamChat(
     sessionId?: string;
     onSession?: (sessionId: string, title: string) => void;
     onJob?: (jobId: string) => void;
+    onDraft?: (draft: OutreachDraft) => void;
   } = {}
 ) {
   try {
@@ -71,6 +82,7 @@ export async function streamChat(
             const data = JSON.parse(line.slice(6));
             if (data.type === "session") options.onSession?.(data.sessionId, data.title);
             if (data.type === "job") options.onJob?.(data.jobId);
+            if (data.type === "draft") options.onDraft?.(data.draft);
             if (data.type === "chunk") onChunk(data.content);
             if (data.type === "done") onDone();
             if (data.type === "error") onError(data.content);
@@ -125,4 +137,21 @@ export interface PipelineStatus {
 
 export function fetchPipelineStatus(jobId: string, clerkUserId: string) {
   return apiFetch<PipelineStatus>(`/api/chat/pipeline/${jobId}`, { clerkUserId });
+}
+
+export function sendOutreachEmail(
+  clerkUserId: string,
+  payload: {
+    to: string;
+    subject: string;
+    body: string;
+    campaignId?: string;
+    companyId?: string;
+  }
+) {
+  return apiFetch<{ success: boolean; campaignId: string }>("/api/outreach/send", {
+    method: "POST",
+    clerkUserId,
+    body: JSON.stringify(payload),
+  });
 }

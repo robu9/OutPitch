@@ -46,8 +46,10 @@ router.post(
     } else {
       campaign = await prisma.outreachCampaign.create({
         data: {
-          userId: req.auth!.userId,
-          companyId: payload.companyId ?? null,
+          user: { connect: { id: req.auth!.userId } },
+          ...(payload.companyId
+            ? { company: { connect: { id: payload.companyId } } }
+            : {}),
           subject: payload.subject,
           body: payload.body,
           status: "sent",
