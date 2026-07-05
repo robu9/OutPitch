@@ -80,9 +80,6 @@
   --graph-node-active-bg: var(--accent-blue);
   --graph-node-active-fg: #ffffff;
 
-  --logo-mark-bg: var(--accent-blue);
-  --logo-mark-fg: #ffffff;
-
   --marquee-fade: var(--bg-elevated);
 
   --radius: 0.625rem;
@@ -114,6 +111,7 @@
   --color-accent-blue: var(--accent-blue);
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-wordmark: var(--font-syne), system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
@@ -171,8 +169,15 @@ body {
     background 0.3s var(--ease-out),
     box-shadow 0.3s var(--ease-out),
     border-color 0.3s var(--ease-out),
+    border-radius 0.3s var(--ease-out),
+    padding 0.3s var(--ease-out),
+    height 0.3s var(--ease-out),
     backdrop-filter 0.3s var(--ease-out),
     -webkit-backdrop-filter 0.3s var(--ease-out);
+}
+
+.nav-shell {
+  transition: max-width 0.3s var(--ease-out);
 }
 
 .nav-pill.nav-scrolled {

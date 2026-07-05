@@ -53,16 +53,24 @@ export function MarketingNav() {
   return (
     <header
       ref={headerRef}
-      className="sticky top-6 z-[var(--z-sticky)] mx-4 flex justify-center md:mx-0"
+      className="sticky top-6 z-[var(--z-sticky)] mx-4 flex justify-center transition-all duration-300 md:mx-0"
     >
-      <nav
-        ref={navRef}
+      <div
         className={cn(
-          "nav-pill flex w-full max-w-4xl items-center justify-between rounded-full px-4 py-2.5 transition-all duration-300 md:px-5",
-          scrolled && "nav-scrolled"
+          "nav-shell relative w-full",
+          scrolled ? "max-w-[50rem]" : "max-w-[70rem]"
         )}
-        aria-label="Main"
       >
+        <nav
+          ref={navRef}
+          className={cn(
+            "nav-pill flex w-full items-center justify-between transition-all duration-300",
+            scrolled
+              ? "nav-scrolled h-11 rounded-full px-3 py-2 md:px-4"
+              : "h-14 rounded-2xl px-5 md:px-8"
+          )}
+          aria-label="Main"
+        >
         <div data-nav-item>
           <Logo size="sm" />
         </div>
@@ -109,38 +117,39 @@ export function MarketingNav() {
         </div>
       </nav>
 
-      <div
-        className={cn(
-          "absolute top-full mt-2 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-border bg-bg-elevated p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all md:hidden",
-          open
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-        )}
-      >
-        <ul className="space-y-1">
-          {links.map((link) => (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-foreground"
-              >
-                {link.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-          <Link href="/sign-in" onClick={() => setOpen(false)}>
-            <Button variant="outline" size="md" className="w-full">
-              Log in
-            </Button>
-          </Link>
-          <Link href="/sign-up" onClick={() => setOpen(false)}>
-            <Button variant="accent" size="md" className="w-full">
-              Get started
-            </Button>
-          </Link>
+        <div
+          className={cn(
+            "absolute top-full mt-2 w-full rounded-2xl border border-border bg-bg-elevated p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all md:hidden",
+            open
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0"
+          )}
+        >
+          <ul className="space-y-1">
+            {links.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-foreground"
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+            <Link href="/sign-in" onClick={() => setOpen(false)}>
+              <Button variant="outline" size="md" className="w-full">
+                Log in
+              </Button>
+            </Link>
+            <Link href="/sign-up" onClick={() => setOpen(false)}>
+              <Button variant="accent" size="md" className="w-full">
+                Get started
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </header>
