@@ -158,10 +158,33 @@ Rules:
       body: JSON.stringify({
         model: "sonar",
         messages: [
-          { role: "system", content: "You are an expert company discovery agent that outputs ONLY structured JSON." },
+          { role: "system", content: "You are an expert company discovery agent that outputs ONLY structured JSON conforming to the requested schema." },
           { role: "user", content: prompt }
         ],
-        response_format: { type: "json_object" }
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            schema: {
+              type: "object",
+              properties: {
+                companies: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      domain: { type: "string" },
+                      description: { type: "string" },
+                      sourceUrl: { type: "string" }
+                    },
+                    required: ["name", "domain", "description", "sourceUrl"]
+                  }
+                }
+              },
+              required: ["companies"]
+            }
+          }
+        }
       }),
     });
 
