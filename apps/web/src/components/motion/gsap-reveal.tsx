@@ -33,7 +33,7 @@ export function GsapReveal({
 
       const fromVars = {
         y,
-        opacity: 0,
+        autoAlpha: 0,
         duration: 0.85,
         delay,
         ease: "power3.out" as const,
@@ -44,11 +44,18 @@ export function GsapReveal({
         return;
       }
 
-      gsap.from(el, {
-        ...fromVars,
+      gsap.set(el, { autoAlpha: 0, y });
+
+      gsap.to(el, {
+        autoAlpha: 1,
+        y: 0,
+        duration: fromVars.duration,
+        delay: fromVars.delay,
+        ease: fromVars.ease,
         scrollTrigger: {
           trigger: el,
-          start: "top 88%",
+          start: "top 90%",
+          once: true,
           toggleActions: "play none none none",
         },
       });

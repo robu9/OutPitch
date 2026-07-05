@@ -22,12 +22,12 @@
   --accent-blue-glow: oklch(0.5465 0.246 262.87 / 0.18);
   --hero-radial: radial-gradient(
     125% 125% at 50% 10%,
-    oklch(0.9846 0.002 247.84) 40%,
-    oklch(0.5465 0.246 262.87) 100%
+    oklch(0.9846 0.002 247.84) 48%,
+    oklch(0.5465 0.246 262.87 / 0.72) 100%
   );
-  --orb-1: oklch(0.5465 0.246 262.87 / 0.22);
-  --orb-2: oklch(0.5465 0.246 262.87 / 0.14);
-  --orb-3: oklch(0.5465 0.246 262.87 / 0.1);
+  --orb-1: oklch(0.5465 0.246 262.87 / 0.12);
+  --orb-2: oklch(0.5465 0.246 262.87 / 0.08);
+  --orb-3: oklch(0.5465 0.246 262.87 / 0.06);
 
   --btn-accent-bg: oklch(0.5465 0.246 262.87);
   --btn-accent-fg: oklch(0.985 0 0);
@@ -133,7 +133,6 @@
 }
 
 html {
-  scroll-behavior: smooth;
   background-color: var(--bg-base);
   color: var(--text-primary);
 }

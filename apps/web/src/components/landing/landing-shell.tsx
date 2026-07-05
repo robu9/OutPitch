@@ -17,43 +17,33 @@ export function LandingShell({ children }: { children: React.ReactNode }) {
       const cards = gsap.utils.toArray<HTMLElement>("[data-float-card]");
       cards.forEach((card, i) => {
         gsap.to(card, {
-          y: i % 2 === 0 ? -8 : 8,
-          duration: 4.5 + i * 0.4,
+          y: i % 2 === 0 ? -4 : 4,
+          duration: 5 + i * 0.4,
           ease: "sine.inOut",
           repeat: -1,
           yoyo: true,
         });
       });
 
-      ScrollTrigger.batch("[data-section-reveal]", {
-        start: "top 88%",
-        onEnter: (batch) => {
-          gsap.from(batch, {
-            opacity: 0,
-            y: 32,
-            duration: 0.8,
-            stagger: 0.05,
-            ease: "power3.out",
-            overwrite: true,
-          });
-        },
-        once: true,
-      });
+      const staggerItems = gsap.utils.toArray<HTMLElement>("[data-stagger-item]");
+      if (staggerItems.length) {
+        gsap.set(staggerItems, { autoAlpha: 0, y: 20 });
 
-      ScrollTrigger.batch("[data-stagger-item]", {
-        start: "top 85%",
-        onEnter: (batch) => {
-          gsap.from(batch, {
-            opacity: 0,
-            y: 24,
-            duration: 0.65,
-            stagger: 0.07,
-            ease: "power3.out",
-            overwrite: true,
-          });
-        },
-        once: true,
-      });
+        ScrollTrigger.batch(staggerItems, {
+          start: "top 90%",
+          onEnter: (batch) => {
+            gsap.to(batch, {
+              autoAlpha: 1,
+              y: 0,
+              duration: 0.65,
+              stagger: 0.06,
+              ease: "power3.out",
+              overwrite: true,
+            });
+          },
+          once: true,
+        });
+      }
     },
     { scope: shellRef }
   );
@@ -68,4 +58,3 @@ export function LandingShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-

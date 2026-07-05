@@ -4,7 +4,7 @@ const logos = ["Linear", "Vercel", "Stripe", "Notion", "Arc", "Raycast"];
 
 export function LogoBar() {
   return (
-    <section data-section-reveal className="border-y border-border bg-bg-elevated py-12">
+    <section className="border-y border-border bg-bg-elevated py-12">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
           <p className="mb-8 text-center text-sm text-text-secondary">

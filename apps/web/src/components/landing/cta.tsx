@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export function LandingCta() {
   return (
-    <section data-section-reveal className="py-20 md:py-28">
+    <section className="py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <GsapReveal>
           <div className="relative overflow-hidden rounded-3xl border border-[var(--accent-blue)]/20 bg-bg-elevated px-8 py-16 text-center md:px-16 md:py-20">

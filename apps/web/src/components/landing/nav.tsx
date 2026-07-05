@@ -40,12 +40,8 @@ export function MarketingNav() {
       );
 
       ScrollTrigger.create({
-        start: 0,
-        end: "max",
-        onUpdate: () => {
-          const scrolled = window.scrollY > 48;
-          nav.classList.toggle("nav-scrolled", scrolled);
-        },
+        start: "48px top",
+        toggleClass: { targets: nav, className: "nav-scrolled" },
       });
     },
     { scope: headerRef }

@@ -73,7 +73,7 @@ export function Testimonials() {
   const row = [...testimonials, ...testimonials];
 
   return (
-    <section data-section-reveal className="border-y border-border bg-bg-elevated py-20 md:py-28 overflow-hidden">
+    <section className="border-y border-border bg-bg-elevated py-20 md:py-28 overflow-hidden">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
           <SectionHeading

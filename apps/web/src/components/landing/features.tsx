@@ -100,7 +100,7 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" data-section-reveal className="py-20 md:py-28">
+    <section id="features" className="py-20 md:py-28">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
           <SectionHeading
