@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Check } from "lucide-react";
 import { Reveal, SectionHeading } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
@@ -134,14 +135,26 @@ export function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/sign-up" className="mt-8 block">
-                  <Button
-                    variant={plan.highlighted ? "accent" : "outline"}
-                    className="w-full"
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
+                <SignedOut>
+                  <Link href="/sign-up" className="mt-8 block">
+                    <Button
+                      variant={plan.highlighted ? "accent" : "outline"}
+                      className="w-full"
+                    >
+                      {plan.cta}
+                    </Button>
+                  </Link>
+                </SignedOut>
+                <SignedIn>
+                  <Link href="/chat" className="mt-8 block">
+                    <Button
+                      variant={plan.highlighted ? "accent" : "outline"}
+                      className="w-full"
+                    >
+                      Go to app
+                    </Button>
+                  </Link>
+                </SignedIn>
               </div>
             </div>
           ))}

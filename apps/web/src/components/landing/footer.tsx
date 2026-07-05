@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Logo } from "@/components/logo";
 
 const columns = [
@@ -63,18 +64,28 @@ export function MarketingFooter() {
             © {new Date().getFullYear()} Outpitch. All rights reserved.
           </p>
           <div className="flex gap-4">
-            <Link
-              href="/sign-in"
-              className="text-xs text-text-secondary hover:text-foreground"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/sign-up"
-              className="text-xs text-text-secondary hover:text-foreground"
-            >
-              Sign up
-            </Link>
+            <SignedOut>
+              <Link
+                href="/sign-in"
+                className="text-xs text-text-secondary hover:text-foreground"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="text-xs text-text-secondary hover:text-foreground"
+              >
+                Sign up
+              </Link>
+            </SignedOut>
+            <SignedIn>
+              <Link
+                href="/chat"
+                className="text-xs text-text-secondary hover:text-foreground"
+              >
+                Go to app
+              </Link>
+            </SignedIn>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { ensureGsap, gsap, useGSAP } from "@/lib/gsap-config";
@@ -89,20 +90,31 @@ export function MarketingNav() {
         </ul>
 
         <div className="hidden items-center gap-2 md:flex">
-          <div data-nav-item>
-            <Link href="/sign-in">
-              <Button variant="ghost" size="sm">
-                Log in
-              </Button>
-            </Link>
-          </div>
-          <div data-nav-item>
-            <Link href="/sign-up">
-              <Button variant="accent" size="sm">
-                Get started
-              </Button>
-            </Link>
-          </div>
+          <SignedOut>
+            <div data-nav-item>
+              <Link href="/sign-in">
+                <Button variant="ghost" size="sm">
+                  Log in
+                </Button>
+              </Link>
+            </div>
+            <div data-nav-item>
+              <Link href="/sign-up">
+                <Button variant="accent" size="sm">
+                  Get started
+                </Button>
+              </Link>
+            </div>
+          </SignedOut>
+          <SignedIn>
+            <div data-nav-item>
+              <Link href="/chat">
+                <Button variant="accent" size="sm">
+                  Go to app
+                </Button>
+              </Link>
+            </div>
+          </SignedIn>
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -139,16 +151,25 @@ export function MarketingNav() {
             ))}
           </ul>
           <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-            <Link href="/sign-in" onClick={() => setOpen(false)}>
-              <Button variant="outline" size="md" className="w-full">
-                Log in
-              </Button>
-            </Link>
-            <Link href="/sign-up" onClick={() => setOpen(false)}>
-              <Button variant="accent" size="md" className="w-full">
-                Get started
-              </Button>
-            </Link>
+            <SignedOut>
+              <Link href="/sign-in" onClick={() => setOpen(false)}>
+                <Button variant="outline" size="md" className="w-full">
+                  Log in
+                </Button>
+              </Link>
+              <Link href="/sign-up" onClick={() => setOpen(false)}>
+                <Button variant="accent" size="md" className="w-full">
+                  Get started
+                </Button>
+              </Link>
+            </SignedOut>
+            <SignedIn>
+              <Link href="/chat" onClick={() => setOpen(false)}>
+                <Button variant="accent" size="md" className="w-full">
+                  Go to app
+                </Button>
+              </Link>
+            </SignedIn>
           </div>
         </div>
       </div>

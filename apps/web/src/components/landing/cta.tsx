@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { ArrowRight } from "lucide-react";
 import { GsapReveal } from "@/components/motion/gsap-reveal";
 import { Button } from "@/components/ui/button";
@@ -25,17 +26,27 @@ export function LandingCta() {
               memory-powered outreach.
             </p>
             <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/sign-up">
-                <Button variant="accent" size="lg">
-                  Get started free
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/sign-in">
-                <Button variant="outline" size="lg">
-                  Log in
-                </Button>
-              </Link>
+              <SignedOut>
+                <Link href="/sign-up">
+                  <Button variant="accent" size="lg">
+                    Get started free
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/sign-in">
+                  <Button variant="outline" size="lg">
+                    Log in
+                  </Button>
+                </Link>
+              </SignedOut>
+              <SignedIn>
+                <Link href="/chat">
+                  <Button variant="accent" size="lg">
+                    Go to app
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </SignedIn>
             </div>
           </div>
         </GsapReveal>
