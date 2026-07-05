@@ -14,7 +14,6 @@ import {
 import { useRef, useState } from "react";
 import { AppAmbient } from "@/components/app-ambient";
 import { Logo } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { ensureGsap, gsap, useGSAP } from "@/lib/gsap-config";
 import { cn } from "@/lib/utils";
 
@@ -136,10 +135,9 @@ export function AppShell({
         <div
           className={cn(
             "flex items-center border-t border-border p-3",
-            collapsed ? "justify-center" : "justify-between"
+            collapsed ? "justify-center" : "justify-end"
           )}
         >
-          {!collapsed && <ThemeToggle />}
           <UserButton afterSignOutUrl="/" />
         </div>
       </aside>

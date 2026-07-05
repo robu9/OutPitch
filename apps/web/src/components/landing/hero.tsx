@@ -33,7 +33,7 @@ export function Hero() {
         </GsapReveal>
 
         <GsapReveal delay={0.05} immediate>
-          <h1 className="text-4xl font-medium tracking-[-0.03em] text-foreground text-balance sm:text-5xl md:text-6xl md:leading-[1.08]">
+          <h1 className="text-4xl font-medium tracking-[-0.05em] text-foreground text-balance sm:text-5xl md:text-6xl md:leading-[1.08]">
             Land your next role
             <br />
             with intelligent outreach
@@ -51,7 +51,7 @@ export function Hero() {
         <GsapReveal delay={0.15} immediate>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/sign-up">
-              <Button variant="accent" size="lg" className="btn-accent-glow">
+              <Button variant="accent" size="lg">
                 Start free
                 <ArrowRight className="h-4 w-4" />
               </Button>

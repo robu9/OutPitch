@@ -109,7 +109,7 @@ export function SectionHeading({
         className
       )}
     >
-      <h2 className="text-3xl font-medium tracking-tight text-foreground text-balance sm:text-4xl">
+      <h2 className="text-3xl font-medium tracking-[-0.05em] text-foreground text-balance sm:text-4xl">
         {title}
       </h2>
       {description && (

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { ensureGsap, gsap, ScrollTrigger, useGSAP } from "@/lib/gsap-config";
 import { cn } from "@/lib/utils";
 
@@ -81,9 +80,6 @@ export function MarketingNav() {
 
         <div className="hidden items-center gap-2 md:flex">
           <div data-nav-item>
-            <ThemeToggle />
-          </div>
-          <div data-nav-item>
             <Link href="/sign-in">
               <Button variant="ghost" size="sm">
                 Log in
@@ -92,7 +88,7 @@ export function MarketingNav() {
           </div>
           <div data-nav-item>
             <Link href="/sign-up">
-              <Button variant="accent" size="sm" className="btn-accent-glow">
+              <Button variant="accent" size="sm">
                 Get started
               </Button>
             </Link>
@@ -100,7 +96,6 @@ export function MarketingNav() {
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
-          <ThemeToggle compact />
           <button
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground"
@@ -140,7 +135,7 @@ export function MarketingNav() {
             </Button>
           </Link>
           <Link href="/sign-up" onClick={() => setOpen(false)}>
-            <Button variant="accent" size="md" className="w-full btn-accent-glow">
+            <Button variant="accent" size="md" className="w-full">
               Get started
             </Button>
           </Link>

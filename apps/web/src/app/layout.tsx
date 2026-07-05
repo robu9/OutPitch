@@ -1,7 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,17 +23,6 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const themeScript = `
-(function() {
-  try {
-    var t = localStorage.getItem('outpitch-theme') || 'system';
-    var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.classList.toggle('dark', dark);
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-  } catch (e) {}
-})();
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,13 +33,10 @@ export default function RootLayout({
       <html
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-        suppressHydrationWarning
+        style={{ colorScheme: "light" }}
       >
-        <head>
-          <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        </head>
-        <body className="min-h-full flex flex-col bg-bg-base text-foreground">
-          <ThemeProvider>{children}</ThemeProvider>
+        <body className="min-h-full flex flex-col bg-bg-base text-foreground font-normal">
+          {children}
         </body>
       </html>
     </ClerkProvider>

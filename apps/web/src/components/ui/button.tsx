@@ -10,7 +10,7 @@ const variants = {
   primary:
     "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] hover:bg-[var(--btn-primary-hover)] border border-transparent",
   accent:
-    "bg-[var(--btn-accent-bg)] text-[var(--btn-accent-fg)] hover:bg-[var(--btn-accent-hover)] border border-transparent",
+    "bg-[var(--btn-accent-bg)] text-[var(--btn-accent-fg)] hover:bg-[var(--btn-accent-hover)] border border-[var(--btn-accent-border)] shadow-[var(--btn-accent-shadow)] active:scale-95",
   secondary:
     "bg-[var(--btn-secondary-bg)] text-[var(--btn-secondary-fg)] hover:bg-[var(--btn-secondary-hover)] border border-border",
   ghost:
@@ -20,7 +20,7 @@ const variants = {
 };
 
 const sizes = {
-  sm: "h-8 px-3 text-xs rounded-full",
+  sm: "h-8 px-4 text-sm rounded-full",
   md: "h-10 px-5 text-sm rounded-full",
   lg: "h-12 px-7 text-sm rounded-full",
 };
@@ -30,7 +30,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] disabled:pointer-events-none disabled:opacity-40",
+        "inline-flex items-center justify-center gap-2 font-normal tracking-wide transition-all duration-200 ease-out disabled:pointer-events-none disabled:opacity-40",
         variants[variant],
         sizes[size],
         className

@@ -104,7 +104,7 @@ export function Pricing() {
                 className={cn(
                   "flex h-full flex-col rounded-2xl border p-6",
                   plan.highlighted
-                    ? "border-[var(--accent-blue)]/40 bg-bg-base shadow-[var(--btn-accent-glow)]"
+                    ? "border-[var(--accent-blue)]/40 bg-bg-base shadow-[var(--btn-accent-shadow)]"
                     : "border-border bg-bg-elevated"
                 )}
               >
@@ -137,7 +137,7 @@ export function Pricing() {
                 <Link href="/sign-up" className="mt-8 block">
                   <Button
                     variant={plan.highlighted ? "accent" : "outline"}
-                    className={cn("w-full", plan.highlighted && "btn-accent-glow")}
+                    className="w-full"
                   >
                     {plan.cta}
                   </Button>

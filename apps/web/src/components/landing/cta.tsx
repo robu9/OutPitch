@@ -26,7 +26,7 @@ export function LandingCta() {
             </p>
             <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/sign-up">
-                <Button variant="accent" size="lg" className="btn-accent-glow">
+                <Button variant="accent" size="lg">
                   Get started free
                   <ArrowRight className="h-4 w-4" />
                 </Button>
