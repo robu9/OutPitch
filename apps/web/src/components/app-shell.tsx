@@ -142,7 +142,7 @@ export function AppShell({
         </div>
       </aside>
 
-      <main className="relative z-[1] flex min-w-0 flex-1 flex-col">{children}</main>
+      <main className="relative z-[1] flex min-w-0 flex-1 flex-col bg-bg-base">{children}</main>
     </div>
   );
 }

@@ -114,10 +114,28 @@ export function CogneeSection() {
                 })}
               </svg>
 
+              {!reduced && (
+                <motion.div
+                  className="absolute z-[1] h-2 w-2 rounded-full bg-[var(--graph-stroke-active)]"
+                  animate={{
+                    left: [
+                      `${getNode(edges[activeEdge][0]).x}%`,
+                      `${getNode(edges[activeEdge][1]).x}%`,
+                    ],
+                    top: [
+                      `${getNode(edges[activeEdge][0]).y}%`,
+                      `${getNode(edges[activeEdge][1]).y}%`,
+                    ],
+                  }}
+                  transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ transform: "translate(-50%, -50%)" }}
+                />
+              )}
+
               {nodes.map((node, i) => (
                 <motion.div
                   key={node.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2"
+                  className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                   style={{ left: `${node.x}%`, top: `${node.y}%` }}
                   initial={reduced ? false : { opacity: 0, scale: 0.8 }}
                   whileInView={{ opacity: 1, scale: 1 }}
@@ -139,24 +157,6 @@ export function CogneeSection() {
                   </div>
                 </motion.div>
               ))}
-
-              {!reduced && (
-                <motion.div
-                  className="absolute h-2 w-2 rounded-full bg-[var(--graph-stroke-active)]"
-                  animate={{
-                    left: [
-                      `${getNode(edges[activeEdge][0]).x}%`,
-                      `${getNode(edges[activeEdge][1]).x}%`,
-                    ],
-                    top: [
-                      `${getNode(edges[activeEdge][0]).y}%`,
-                      `${getNode(edges[activeEdge][1]).y}%`,
-                    ],
-                  }}
-                  transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ transform: "translate(-50%, -50%)" }}
-                />
-              )}
             </div>
           </Reveal>
         </div>
