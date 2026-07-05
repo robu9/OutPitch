@@ -17,6 +17,7 @@ import { sendEmail, fetchEmails, getLinkedInProfileWithRetry } from "../services
 import { buildLinkedInProfileSummary } from "../services/linkedin-profile.js";
 import { enqueueCompanyPipeline, getPipelineStatus } from "../jobs/company-pipeline.js";
 import { ingestUserProfile } from "../services/cognee.js";
+import { assessSearchReadiness, toSearchParams } from "../services/search-context.js";
 
 const SYSTEM_PROMPT = `You are Outpitch, an AI job search assistant. You help users find companies, discover founder and recruiter contacts, draft personalized outreach emails, and track their job search progress.
 
@@ -31,8 +32,16 @@ Cognee memory tools (call only when needed):
 Response style (important):
 - Keep replies short and conversational — a couple of sentences, not an essay.
 - On a greeting or vague opener ("hi", "what can you do"), reply in 1-2 sentences and ask ONE focused question to move forward (e.g. "What role are you targeting?"). Never respond with a bulleted list of your capabilities.
-- If the profile snapshot already shows a target role or industry, skip the question and suggest one concrete next step (e.g. offer to search companies for that role).
 - Surface at most one clear next action per reply rather than listing every feature.
+
+Company discovery (critical — follow every time):
+- NEVER call searchCompanies on the first vague request. Gather context first with short questions, one at a time.
+- Before searchCompanies, call recall to check stored preferences. Use the profile snapshot too.
+- Required before search: target role, location or remote preference, industry or company type, and at least basic company preferences (startup vs enterprise, must-haves, or deal-breakers).
+- When the user answers a discovery question, call remember() with their answer, then ask the next missing piece OR search if context is complete.
+- If searchCompanies returns blocked: true, ask nextQuestion exactly — do not retry search until the user replies.
+- Only start search when the user confirms or you have all required context from profile + memory + their answers.
+- Summarize what you understood in one sentence before starting the search.
 - Write plain text ONLY. Never use markdown: no asterisks (* or **), no #, no bullet points, no bold/italic markers. This output is shown in web chat and WhatsApp, where markdown renders as broken characters.
 
 Guidelines:
@@ -93,13 +102,20 @@ function buildProfileContext(
 const tools: FunctionDeclaration[] = [
   {
     name: "searchCompanies",
-    description: "Search for companies hiring for a specific role. Runs async pipeline.",
+    description:
+      "Start company discovery after gathering context (role, location, industry, preferences). Blocked automatically if context is incomplete — ask the returned nextQuestion first.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         role: { type: SchemaType.STRING, description: "Target job role" },
-        location: { type: SchemaType.STRING, description: "Preferred location" },
-        industry: { type: SchemaType.STRING, description: "Industry filter" },
+        location: { type: SchemaType.STRING, description: "Preferred location or remote" },
+        industry: { type: SchemaType.STRING, description: "Industry or sector" },
+        companySize: { type: SchemaType.STRING, description: "e.g. startup, Series B, enterprise" },
+        keywords: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+          description: "Extra search signals from user preferences",
+        },
         limit: { type: SchemaType.NUMBER, description: "Max companies (1-20)" },
       },
       required: ["role"],
@@ -241,12 +257,34 @@ async function executeTool(
 ): Promise<string> {
   switch (name) {
     case "searchCompanies": {
-      const params: CompanySearchParams = {
+      const proposed: Partial<CompanySearchParams> = {
         role: args.role as string,
         location: args.location as string | undefined,
         industry: args.industry as string | undefined,
+        companySize: args.companySize as string | undefined,
+        keywords: args.keywords as string[] | undefined,
         limit: (args.limit as number) ?? 10,
       };
+
+      const readiness = await assessSearchReadiness(
+        ctx.userId,
+        ctx.clerkId,
+        ctx.cogneeToken,
+        proposed
+      );
+
+      if (!readiness.ready) {
+        return JSON.stringify({
+          blocked: true,
+          reason: "insufficient_context",
+          missing: readiness.missing,
+          nextQuestion: readiness.nextQuestion,
+          knownContext: readiness.contextSummary,
+          hint: "Ask the user nextQuestion. Call remember() with their answer, then retry searchCompanies.",
+        });
+      }
+
+      const params = toSearchParams(readiness.context, proposed);
       const job = await enqueueCompanyPipeline(
         ctx.userId,
         ctx.clerkId,
@@ -257,6 +295,7 @@ async function executeTool(
         message: "Company search started",
         jobId: job.id,
         status: "queued",
+        searchContext: readiness.contextSummary,
       });
     }
 

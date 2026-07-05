@@ -4,6 +4,7 @@ import { CompanySearchParamsSchema } from "@outpitch/types";
 import { asyncHandler } from "../middleware/error.js";
 import { requireAuth } from "../middleware/auth.js";
 import { enqueueCompanyPipeline } from "../jobs/company-pipeline.js";
+import { assessSearchReadiness, toSearchParams } from "../services/search-context.js";
 import { improve, userDataset } from "../services/cognee.js";
 import { verifyEmailExists } from "../services/email-verifier.js";
 import { config } from "../config.js";
@@ -45,14 +46,33 @@ router.post(
     const params = CompanySearchParamsSchema.parse(req.body);
     const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
 
+    const readiness = await assessSearchReadiness(
+      req.auth!.userId,
+      req.auth!.clerkId,
+      user?.cogneeToken ?? undefined,
+      params
+    );
+
+    if (!readiness.ready) {
+      res.status(422).json({
+        error: "More context needed before searching",
+        code: "INSUFFICIENT_SEARCH_CONTEXT",
+        missing: readiness.missing,
+        nextQuestion: readiness.nextQuestion,
+        knownContext: readiness.contextSummary,
+      });
+      return;
+    }
+
+    const searchParams = toSearchParams(readiness.context, params);
     const job = await enqueueCompanyPipeline(
       req.auth!.userId,
       req.auth!.clerkId,
-      params,
+      searchParams,
       user?.cogneeToken ?? undefined
     );
 
-    res.json({ jobId: job.id, status: job.status });
+    res.json({ jobId: job.id, status: job.status, searchContext: readiness.contextSummary });
   })
 );
 
