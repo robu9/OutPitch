@@ -36,43 +36,49 @@ export async function streamChat(
   onError: (error: string) => void,
   options: { sessionId?: string; onSession?: (sessionId: string, title: string) => void } = {}
 ) {
-  const response = await fetch(`${API_URL}/api/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-clerk-user-id": clerkUserId,
-    },
-    body: JSON.stringify({ message, sessionId: options.sessionId }),
-  });
+  try {
+    const response = await fetch(`${API_URL}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-clerk-user-id": clerkUserId,
+      },
+      body: JSON.stringify({ message, sessionId: options.sessionId }),
+    });
 
-  if (!response.ok || !response.body) {
-    onError("Failed to connect to chat");
-    return;
-  }
+    if (!response.ok || !response.body) {
+      onError("Failed to connect to chat. Is the server running?");
+      return;
+    }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    const text = decoder.decode(value);
-    const lines = text.split("\n");
+      const text = decoder.decode(value);
+      const lines = text.split("\n");
 
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          if (data.type === "session") options.onSession?.(data.sessionId, data.title);
-          if (data.type === "chunk") onChunk(data.content);
-          if (data.type === "done") onDone();
-          if (data.type === "error") onError(data.content);
-        } catch {
-          // skip malformed SSE
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === "session") options.onSession?.(data.sessionId, data.title);
+            if (data.type === "chunk") onChunk(data.content);
+            if (data.type === "done") onDone();
+            if (data.type === "error") onError(data.content);
+          } catch {
+            // skip malformed SSE
+          }
         }
       }
     }
+  } catch (err) {
+    // Network error, CORS failure, mid-stream disconnect — surface it so the UI
+    // can recover instead of hanging on a permanent "streaming" state.
+    onError(err instanceof Error ? err.message : "Connection to chat failed");
   }
 }
 

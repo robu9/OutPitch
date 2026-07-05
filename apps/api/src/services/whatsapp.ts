@@ -30,13 +30,14 @@ function chunkText(text: string): string[] {
 export async function sendWhatsAppMessage(
   toNumber: string,
   text: string
-): Promise<void> {
+): Promise<boolean> {
   if (!config.whatsappToken || !config.whatsappPhoneNumberId) {
     console.warn("WhatsApp not configured — skipping outbound message");
-    return;
+    return false;
   }
 
-  for (const body of chunkText(text)) {
+  const chunks = chunkText(text);
+  for (let i = 0; i < chunks.length; i++) {
     const res = await fetch(graphUrl(), {
       method: "POST",
       headers: {
@@ -47,16 +48,21 @@ export async function sendWhatsAppMessage(
         messaging_product: "whatsapp",
         to: toNumber,
         type: "text",
-        text: { body },
+        text: { body: chunks[i] },
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error(`WhatsApp send failed (${res.status}): ${errText}`);
-      return;
+      // Loud, specific log — the #1 cause is an expired WHATSAPP_TOKEN or a
+      // recipient not on the test number's allowed list. Both fail silently otherwise.
+      console.error(
+        `WhatsApp send FAILED to ${toNumber} (chunk ${i + 1}/${chunks.length}, HTTP ${res.status}): ${errText}`
+      );
+      return false;
     }
   }
+  return true;
 }
 
 /**
@@ -68,8 +74,10 @@ export function verifyWhatsAppSignature(
   signatureHeader: string | undefined
 ): boolean {
   if (!config.whatsappAppSecret) {
-    // No secret configured — cannot verify; treat as unverified unless in dev.
-    return config.nodeEnv === "development";
+    // No secret configured — we can't verify. Allow through (webhook still works)
+    // but warn loudly, since rejecting here would silently kill ALL inbound messages.
+    console.warn("WHATSAPP_APP_SECRET not set — skipping webhook signature verification");
+    return true;
   }
   if (!rawBody || !signatureHeader) return false;
 

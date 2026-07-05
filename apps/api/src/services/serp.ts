@@ -28,7 +28,11 @@ async function serpSearch(query: string, num = 10): Promise<SerpResult[]> {
   });
 
   if (!response.ok) {
-    throw new Error(`Serper API error: ${response.status}`);
+    // Degrade gracefully instead of throwing so one bad query (e.g. a free-plan
+    // "pattern not allowed" 400, or a rate limit) doesn't fail the whole pipeline.
+    const body = await response.text().catch(() => "");
+    console.warn(`Serper ${response.status} for query "${query.slice(0, 80)}": ${body.slice(0, 120)}`);
+    return [];
   }
 
   const data = (await response.json()) as SerperResponse;
@@ -78,17 +82,21 @@ const BLOCKED_SEARCH_DOMAINS = [
   "quora.com",
 ];
 
+// NOTE: plain-keyword queries only — the free Serper plan rejects advanced operators
+// (quoted phrases, OR, site:, -exclusions) with a 400 "Query pattern not allowed for
+// free accounts". Recruitment/job-board results are removed later by BLOCKED_SEARCH_DOMAINS
+// and isRecruitmentOrJobBoard, so we don't need in-query exclusions.
 function buildEmployerSearchQueries(params: CompanySearchParams): string[] {
   const role = params.role;
   const location = params.location ?? "";
   const industry = params.industry ?? "";
   const keywords = (params.keywords ?? []).join(" ");
-  const exclude = "-recruiting -staffing -agency -jobboard -headhunter";
+  const clean = (q: string) => q.replace(/\s+/g, " ").trim();
 
   return [
-    `"${role}" "we're hiring" OR "join our team" OR careers ${location} ${industry} ${keywords} ${exclude}`.trim(),
-    `"${role}" startup OR company ${location} ${industry} ${keywords} careers open roles ${exclude}`.trim(),
-    `"${role}" ${industry} ${location} ${keywords} engineering team product ${exclude}`.trim(),
+    clean(`${role} careers ${location} ${industry} ${keywords}`),
+    clean(`${role} we are hiring ${industry} ${location}`),
+    clean(`${role} jobs at startups ${industry} ${location} ${keywords}`),
   ];
 }
 
@@ -105,9 +113,12 @@ export async function searchCompanies(params: CompanySearchParams) {
 
   const seenDomains = new Set<string>();
 
-  for (const query of queries) {
-    const results = await serpSearch(query, fetchLimit);
+  // Run the query variants in parallel, then dedupe by domain.
+  const resultSets = await Promise.all(
+    queries.map((query) => serpSearch(query, fetchLimit).catch(() => []))
+  );
 
+  for (const results of resultSets) {
     for (const result of results) {
       const domain = extractDomain(result.link);
       if (!domain || seenDomains.has(domain)) continue;
@@ -132,10 +143,17 @@ export async function searchPeopleAtCompany(
 ) {
   const people: Array<{ name: string; title: string; linkedinUrl?: string }> = [];
 
-  for (const title of titles) {
-    const query = `site:linkedin.com/in "${title}" "${domain}"`;
-    const results = await serpSearch(query, 5);
+  // Plain-keyword query (free Serper plan rejects site:/quoted operators). We still
+  // keep only linkedin.com/in profile links below, so precision stays reasonable.
+  const resultSets = await Promise.all(
+    titles.map((title) =>
+      serpSearch(`${title} ${domain} linkedin`, 5)
+        .then((results) => ({ title, results }))
+        .catch(() => ({ title, results: [] as Awaited<ReturnType<typeof serpSearch>> }))
+    )
+  );
 
+  for (const { title, results } of resultSets) {
     for (const result of results) {
       if (!result.link.includes("linkedin.com/in/")) continue;
       const nameMatch = result.title.match(/^([^-|]+)/);

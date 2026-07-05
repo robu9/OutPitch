@@ -282,7 +282,7 @@ export async function getLinkedInProfile(userId: string) {
 
 export async function getLinkedInProfileWithRetry(
   userId: string,
-  attempts = 4,
+  attempts = 2,
   delayMs = 1500
 ) {
   for (let attempt = 1; attempt <= attempts; attempt++) {

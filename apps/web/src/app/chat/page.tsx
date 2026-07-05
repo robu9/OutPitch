@@ -136,35 +136,40 @@ export default function ChatPage() {
       { id: assistantId, role: "assistant", content: "" },
     ]);
 
-    await streamChat(
-      userMessage,
-      user.id,
-      (chunk) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId ? { ...m, content: m.content + chunk } : m
-          )
-        );
-      },
-      () => {
-        setStreaming(false);
-        loadSessions();
-      },
-      (error) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId ? { ...m, content: `Error: ${error}` } : m
-          )
-        );
-        setStreaming(false);
-      },
-      {
-        sessionId: sessionId ?? undefined,
-        onSession: (sid) => {
-          if (!sessionId) setSessionId(sid);
+    try {
+      await streamChat(
+        userMessage,
+        user.id,
+        (chunk) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + chunk } : m
+            )
+          );
         },
-      }
-    );
+        () => {
+          loadSessions();
+        },
+        (error) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: m.content || `Error: ${error}` }
+                : m
+            )
+          );
+        },
+        {
+          sessionId: sessionId ?? undefined,
+          onSession: (sid) => {
+            if (!sessionId) setSessionId(sid);
+          },
+        }
+      );
+    } finally {
+      // Guarantee the UI unlocks even if the stream ends without a terminal event.
+      setStreaming(false);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {

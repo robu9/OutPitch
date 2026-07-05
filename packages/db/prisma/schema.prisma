@@ -103,7 +103,7 @@ model UserCompanyLink {
 model OutreachCampaign {
   id          String   @id @default(cuid())
   userId      String
-  companyId   String
+  companyId   String?
   contactId   String?
   subject     String?
   body        String?
@@ -114,7 +114,7 @@ model OutreachCampaign {
   updatedAt   DateTime @updatedAt
 
   user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   contact CompanyContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   threads EmailThread[]
 

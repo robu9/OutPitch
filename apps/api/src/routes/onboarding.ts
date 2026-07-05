@@ -69,6 +69,9 @@ export async function syncLinkedInForUser(userId: string, clerkId: string) {
   return profile;
 }
 
+// Kicks off a LinkedIn sync in the BACKGROUND (never awaited by the request) so
+// GET /status returns immediately. The Apify scrape inside the sync can take tens
+// of seconds; the client polls `linkedinSyncing` and picks up the result later.
 async function ensureLinkedInSynced(userId: string, clerkId: string, linkedinConnected: boolean) {
   if (!linkedinConnected || linkedInSyncInFlight.has(clerkId)) return false;
 
@@ -83,15 +86,12 @@ async function ensureLinkedInSynced(userId: string, clerkId: string, linkedinCon
   }
 
   linkedInSyncInFlight.add(clerkId);
-  try {
-    await syncLinkedInForUser(userId, clerkId);
-    return true;
-  } catch (error) {
-    console.warn("LinkedIn auto-sync failed:", error);
-    return false;
-  } finally {
-    linkedInSyncInFlight.delete(clerkId);
-  }
+  // Detached — do not await. Errors are logged, and the in-flight flag is always cleared.
+  void syncLinkedInForUser(userId, clerkId)
+    .catch((error) => console.warn("LinkedIn auto-sync failed:", error))
+    .finally(() => linkedInSyncInFlight.delete(clerkId));
+
+  return true;
 }
 
 router.get(

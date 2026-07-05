@@ -166,7 +166,7 @@ router.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const company = await prisma.company.findUnique({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       include: { contacts: true },
     });
     if (!company) {
@@ -188,7 +188,7 @@ router.post(
       where: {
         userId_companyId: {
           userId: req.auth!.userId,
-          companyId: req.params.id,
+          companyId: String(req.params.id),
         },
       },
       data: { feedback },

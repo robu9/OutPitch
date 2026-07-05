@@ -44,19 +44,16 @@ router.post(
         data: { status: "sent", sentAt: new Date() },
       });
     } else {
-      const company = await prisma.company.findFirst();
-      if (company) {
-        campaign = await prisma.outreachCampaign.create({
-          data: {
-            userId: req.auth!.userId,
-            companyId: company.id,
-            subject: payload.subject,
-            body: payload.body,
-            status: "sent",
-            sentAt: new Date(),
-          },
-        });
-      }
+      campaign = await prisma.outreachCampaign.create({
+        data: {
+          userId: req.auth!.userId,
+          companyId: payload.companyId ?? null,
+          subject: payload.subject,
+          body: payload.body,
+          status: "sent",
+          sentAt: new Date(),
+        },
+      });
     }
 
     res.json({ success: true, result, campaignId: campaign?.id });

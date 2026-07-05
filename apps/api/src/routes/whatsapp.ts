@@ -9,6 +9,7 @@ import {
   verifyWhatsAppSignature,
 } from "../services/whatsapp.js";
 import { runAgent } from "../agent/outpitch-agent.js";
+import { markProcessedOnce } from "../lib/redis.js";
 
 const router = Router();
 
@@ -94,6 +95,7 @@ router.post(
 );
 
 interface InboundMessage {
+  id?: string;
   from: string;
   text?: { body?: string };
   type: string;
@@ -113,6 +115,14 @@ async function handleInbound(body: unknown): Promise<void> {
 
   for (const msg of messages) {
     if (msg.type !== "text" || !msg.text?.body) continue;
+    // Idempotency: Meta retries webhooks, so skip any message id we've already handled.
+    if (msg.id) {
+      const first = await markProcessedOnce(`wa:msg:${msg.id}`);
+      if (!first) {
+        console.log(`WhatsApp message ${msg.id} already processed — skipping duplicate`);
+        continue;
+      }
+    }
     await processMessage(normalizeNumber(msg.from), msg.text.body.trim());
   }
 }

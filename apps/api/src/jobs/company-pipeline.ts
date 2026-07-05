@@ -1,4 +1,4 @@
-import { Queue, Worker, type Job } from "bullmq";
+import { Queue, Worker, type Job, type ConnectionOptions } from "bullmq";
 import { prisma, type CompanyContact } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import { searchCompanies, searchPeopleAtCompany } from "../services/serp.js";
@@ -24,7 +24,10 @@ import {
 } from "../services/company-matcher.js";
 import { getQueueConnection } from "../lib/redis.js";
 
-const connection = getQueueConnection();
+// Cast: the repo resolves two ioredis versions, so the ioredis instance and
+// BullMQ's bundled ioredis type don't line up structurally. BullMQ accepts the
+// instance fine at runtime.
+const connection = getQueueConnection() as unknown as ConnectionOptions;
 
 export const companyPipelineQueue = new Queue("company-pipeline", { connection });
 
@@ -42,7 +45,8 @@ async function updateJob(
 ) {
   await prisma.pipelineJob.update({
     where: { id: jobId },
-    data: update,
+    // `result` is a Prisma Json column; the loose `unknown` here is a valid JSON value.
+    data: update as Parameters<typeof prisma.pipelineJob.update>[0]["data"],
   });
 }
 
@@ -71,6 +75,30 @@ export async function enqueueCompanyPipeline(
 
   return job;
 }
+
+// Bounded-concurrency map: runs `fn` over `items` with at most `limit` in flight.
+// No external dependency; preserves input order in the returned array.
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) break;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+const COMPANY_CONCURRENCY = 3;
+const VERIFY_CONCURRENCY = 4;
+const MAX_PEOPLE_PER_COMPANY = 3;
 
 async function processPipeline(job: Job<PipelineJobData>) {
   const { jobId, userId, clerkId, params, cogneeToken } = job.data;
@@ -116,35 +144,40 @@ async function processPipeline(job: Job<PipelineJobData>) {
       sourceUrl: string;
     }> = [];
 
-    for (let i = 0; i < companies.length; i++) {
-      const company = companies[i];
-      const progress = 10 + Math.floor((i / companies.length) * 80);
+    let completed = 0;
+    type ScoredCompany = (typeof scoredResults)[number];
+
+    const processCompany = async (
+      company: (typeof companies)[number]
+    ): Promise<ScoredCompany | null> => {
+      const progress = 10 + Math.floor((completed / companies.length) * 80);
       await updateJob(jobId, {
         status: "crawling",
         progress,
         message: `Processing ${company.name}...`,
       });
 
-      let dbCompany = await prisma.company.findUnique({
+      // Upsert on the unique domain so two concurrent jobs (worker concurrency > 1)
+      // discovering the same company don't both create it and hit a P2002 that
+      // fails the whole job.
+      let dbCompany = await prisma.company.upsert({
         where: { domain: company.domain },
+        create: {
+          name: company.name,
+          domain: company.domain,
+          description: company.description,
+          sourceUrl: company.sourceUrl,
+          cogneeDataset: `company_pending`,
+        },
+        update: {},
         include: { contacts: true },
       });
 
-      if (!dbCompany) {
-        dbCompany = await prisma.company.create({
-          data: {
-            name: company.name,
-            domain: company.domain,
-            description: company.description,
-            sourceUrl: company.sourceUrl,
-            cogneeDataset: `company_pending`,
-          },
-          include: { contacts: true },
-        });
-
-        await prisma.company.update({
+      if (dbCompany.cogneeDataset === "company_pending") {
+        dbCompany = await prisma.company.update({
           where: { id: dbCompany.id },
           data: { cogneeDataset: companyDataset(dbCompany.id) },
+          include: { contacts: true },
         });
       }
 
@@ -188,15 +221,14 @@ async function processPipeline(job: Job<PipelineJobData>) {
         resolved: { email: string; source: string; confidence: number; title?: string };
       };
 
-      const candidates: PersonCandidate[] = [];
+      // Resolve emails for the top people in parallel (pure, no DB writes).
+      const resolvedCandidates = await Promise.all(
+        people.slice(0, MAX_PEOPLE_PER_COMPANY).map(async (person): Promise<PersonCandidate | null> => {
+          const existing = dbCompany.contacts.find(
+            (c: CompanyContact) => c.name.toLowerCase() === person.name.toLowerCase()
+          );
 
-      for (const person of people.slice(0, 5)) {
-        const existing = dbCompany.contacts.find(
-          (c: CompanyContact) => c.name.toLowerCase() === person.name.toLowerCase()
-        );
-
-        let resolved =
-          existing?.email
+          const resolved = existing?.email
             ? {
                 email: existing.email,
                 source: existing.source,
@@ -210,10 +242,12 @@ async function processPipeline(job: Job<PipelineJobData>) {
                 linkedinUrl: person.linkedinUrl,
               });
 
-        if (resolved) {
-          candidates.push({ person, existing, resolved });
-        }
-      }
+          return resolved ? { person, existing, resolved } : null;
+        })
+      );
+      const candidates: PersonCandidate[] = resolvedCandidates.filter(
+        (c): c is PersonCandidate => c !== null
+      );
 
       await updateJob(jobId, {
         status: "enriching",
@@ -221,45 +255,47 @@ async function processPipeline(job: Job<PipelineJobData>) {
         message: `Verifying emails at ${company.name}...`,
       });
 
-      for (const { person, existing, resolved } of candidates) {
+      // Verify candidate emails concurrently (catch-all is cached per domain).
+      await mapWithConcurrency(candidates, VERIFY_CONCURRENCY, async ({ person, existing, resolved }) => {
         const verification = await verifyEmailExists(resolved.email);
-        if (verification.valid) {
-          contacts.push({
-            name: person.name,
-            title: person.title ?? resolved.title,
-            email: resolved.email,
-            source: resolved.source,
-            confidence: resolved.confidence,
-          });
-
-          if (existing) {
-            await prisma.companyContact.update({
-              where: { id: existing.id },
-              data: {
-                email: resolved.email,
-                source: resolved.source,
-                confidence: resolved.confidence,
-              },
-            });
-          } else {
-            await prisma.companyContact.create({
-              data: {
-                companyId: dbCompany.id,
-                name: person.name,
-                title: person.title ?? resolved.title,
-                email: resolved.email,
-                linkedinUrl: person.linkedinUrl,
-                source: resolved.source,
-                confidence: resolved.confidence,
-              },
-            });
-          }
-        } else {
+        if (!verification.valid) {
           console.log(
             `Rejected email ${resolved.email} for ${person.name} at ${company.domain}: ${verification.reason}`
           );
+          return;
         }
-      }
+
+        contacts.push({
+          name: person.name,
+          title: person.title ?? resolved.title,
+          email: resolved.email,
+          source: resolved.source,
+          confidence: resolved.confidence,
+        });
+
+        if (existing) {
+          await prisma.companyContact.update({
+            where: { id: existing.id },
+            data: {
+              email: resolved.email,
+              source: resolved.source,
+              confidence: resolved.confidence,
+            },
+          });
+        } else {
+          await prisma.companyContact.create({
+            data: {
+              companyId: dbCompany.id,
+              name: person.name,
+              title: person.title ?? resolved.title,
+              email: resolved.email,
+              linkedinUrl: person.linkedinUrl,
+              source: resolved.source,
+              confidence: resolved.confidence,
+            },
+          });
+        }
+      });
 
       if (contacts.length === 0) {
         const apolloAvailable = await isApolloEnrichmentAvailable();
@@ -281,7 +317,7 @@ async function processPipeline(job: Job<PipelineJobData>) {
             message: `No verified emails — trying Apollo for ${company.name}...`,
           });
 
-          for (const person of people.slice(0, 5)) {
+          for (const person of people.slice(0, MAX_PEOPLE_PER_COMPANY)) {
             const apolloResolved = await resolveEmailViaApollo({
               name: person.name,
               domain: company.domain,
@@ -342,7 +378,8 @@ async function processPipeline(job: Job<PipelineJobData>) {
       });
       if (preCheck) {
         console.log(`[pipeline] Skipping ${company.name} (${company.domain}): recruitment/job board`);
-        continue;
+        completed++;
+        return null;
       }
 
       const companyContext = crawlSummary || company.description || "";
@@ -357,7 +394,8 @@ async function processPipeline(job: Job<PipelineJobData>) {
         console.log(
           `[pipeline] Skipping ${company.name} (${company.domain}): score ${matchScore} — ${matchReason}`
         );
-        continue;
+        completed++;
+        return null;
       }
 
       await prisma.userCompanyLink.upsert({
@@ -366,7 +404,8 @@ async function processPipeline(job: Job<PipelineJobData>) {
         update: { matchScore },
       });
 
-      scoredResults.push({
+      completed++;
+      return {
         id: dbCompany.id,
         name: company.name,
         domain: company.domain,
@@ -375,7 +414,13 @@ async function processPipeline(job: Job<PipelineJobData>) {
         matchReason,
         contacts,
         sourceUrl: company.sourceUrl,
-      });
+      };
+    };
+
+    // Process companies concurrently — different domains are fully independent.
+    const mapped = await mapWithConcurrency(companies, COMPANY_CONCURRENCY, processCompany);
+    for (const r of mapped) {
+      if (r) scoredResults.push(r);
     }
 
     const results = scoredResults

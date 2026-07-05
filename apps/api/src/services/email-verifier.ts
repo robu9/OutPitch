@@ -190,15 +190,30 @@ async function smtpHandshake(
   }
 }
 
+// Catch-all is a property of the domain, not the individual mailbox — cache it so
+// we probe once per domain instead of once per candidate email. Concurrent callers
+// for the same domain share the single in-flight probe.
+const CATCH_ALL_TTL_MS = 10 * 60 * 1000;
+const catchAllCache = new Map<string, { at: number; promise: Promise<boolean> }>();
+
 async function isCatchAllDomain(mxHost: string, domain: string): Promise<boolean> {
-  const probe = `no-mailbox-${randomUUID().slice(0, 8)}@${domain}`;
-  try {
-    const result = await smtpHandshake(mxHost, probe);
-    return result.accepted;
-  } catch {
-    return false;
+  const cached = catchAllCache.get(domain);
+  if (cached && Date.now() - cached.at < CATCH_ALL_TTL_MS) {
+    return cached.promise;
   }
+
+  const probe = `no-mailbox-${randomUUID().slice(0, 8)}@${domain}`;
+  const promise = smtpHandshake(mxHost, probe)
+    .then((result) => result.accepted)
+    .catch(() => false);
+
+  catchAllCache.set(domain, { at: Date.now(), promise });
+  return promise;
 }
+
+// Once a connect times out (port 25 blocked outbound — typical on cloud hosts),
+// stop paying the full timeout on every subsequent email; short-circuit fast.
+let smtpBlocked = false;
 
 /** In-house verification: syntax → DNS MX → SMTP RCPT TO (no third-party API). */
 export async function verifyEmailExists(email: string): Promise<EmailVerificationResult> {
@@ -228,6 +243,18 @@ export async function verifyEmailExists(email: string): Promise<EmailVerificatio
       deliverability: "undeliverable",
       provider: "smtp",
       reason: "no_mx",
+    };
+  }
+
+  // Port 25 already known blocked — don't wait on a doomed connect for every email.
+  // Mirrors the old catch-path result (rejected), just without the timeout wait.
+  if (smtpBlocked) {
+    return {
+      valid: false,
+      deliverability: isRoleAccount(parsed.local) ? "risky" : "unknown",
+      provider: "smtp",
+      reason: isRoleAccount(parsed.local) ? "role_account" : "smtp_unavailable",
+      mxHost,
     };
   }
 
@@ -265,6 +292,13 @@ export async function verifyEmailExists(email: string): Promise<EmailVerificatio
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "smtp_error";
+
+    // A connect timeout means port 25 is almost certainly blocked outbound — latch
+    // it so the rest of this run short-circuits instead of waiting on every email.
+    if (message === "smtp_connect_timeout") {
+      smtpBlocked = true;
+      console.warn("SMTP connect timed out — assuming port 25 blocked; skipping further SMTP probes this run");
+    }
 
     // Port 25 blocked or remote unreachable — fall back to MX + role checks only
     if (isRoleAccount(parsed.local)) {

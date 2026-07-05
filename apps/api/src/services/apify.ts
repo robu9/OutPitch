@@ -139,13 +139,19 @@ export async function scrapeLinkedInViaApify(
   const url = profileUrl(vanityOrUrl);
 
   try {
-    const run = await client.actor(config.apifyLinkedInActor).call({
-      queries: [url],
-      profileScraperMode: config.apifyProfileMode,
-    });
+    // Bound the blocking wait so a slow/stuck actor run can't hang the caller
+    // indefinitely. On timeout the run keeps going on Apify but we return null
+    // and the caller falls back to API-only profile data.
+    const run = await client.actor(config.apifyLinkedInActor).call(
+      {
+        queries: [url],
+        profileScraperMode: config.apifyProfileMode,
+      },
+      { waitSecs: config.apifyWaitSecs }
+    );
 
-    if (!run?.defaultDatasetId) {
-      console.warn("Apify run returned no dataset for", url);
+    if (!run?.defaultDatasetId || run.status !== "SUCCEEDED") {
+      console.warn(`Apify run not ready for ${url} (status=${run?.status ?? "unknown"})`);
       return null;
     }
 

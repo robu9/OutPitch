@@ -1,8 +1,9 @@
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 
-const srcDir = path.dirname(fileURLToPath(import.meta.url));
+// This package compiles to CommonJS (NodeNext + no "type":"module"), so __dirname
+// is available at runtime under both tsx (dev) and the compiled build.
+const srcDir = __dirname;
 const apiRoot = path.resolve(srcDir, "..");
 const monorepoRoot = path.resolve(apiRoot, "../..");
 

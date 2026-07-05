@@ -81,23 +81,30 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!user || oauthHandled.current) return;
+    // Composio returns to /settings?connect=<toolkit> after OAuth (no status param).
     const connect = searchParams.get("connect");
-    const oauthStatus = searchParams.get("status");
-    if (connect !== "linkedin") return;
+    if (connect !== "linkedin" && connect !== "gmail") return;
     oauthHandled.current = true;
-    if (oauthStatus === "success") {
-      syncLinkedIn()
-        .finally(() => router.replace("/settings"))
-        .catch((err) => {
-          setError(err instanceof Error ? err.message : "Failed to sync LinkedIn profile");
-        });
+
+    const oauthStatus = searchParams.get("status");
+    const failed = oauthStatus === "failed";
+    // Always clean the query param out of the URL.
+    router.replace("/settings");
+
+    if (failed) {
+      setError(`${connect === "gmail" ? "Gmail" : "LinkedIn"} connection was cancelled or failed.`);
       return;
     }
-    if (oauthStatus === "failed") {
-      router.replace("/settings");
-      setError("LinkedIn connection was cancelled or failed.");
+
+    // On a successful LinkedIn connect, kick off the profile sync.
+    if (connect === "linkedin") {
+      syncLinkedIn().catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to sync LinkedIn profile");
+      });
+    } else {
+      loadStatus().catch(() => {});
     }
-  }, [user, searchParams, router, syncLinkedIn]);
+  }, [user, searchParams, router, syncLinkedIn, loadStatus]);
 
   async function connectLinkedIn() {
     if (!user) return;

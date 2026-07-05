@@ -7,6 +7,8 @@ import { runAgent, getPipelineStatus } from "../agent/outpitch-agent.js";
 
 const router = Router();
 
+const TOOL_MARKER = /\n?\[Using tool: [^\]]+\]\n?/g;
+
 const ChatMessageSchema = z.object({
   message: z.string().min(1),
   sessionId: z.string().optional(),
@@ -137,8 +139,12 @@ router.post(
         clerkId: req.auth!.clerkId,
         cogneeToken: user?.cogneeToken ?? undefined,
       })) {
-        fullResponse += chunk;
-        res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
+        // Strip the internal "[Using tool: X]" progress markers so they aren't
+        // shown to the user, saved to history, or replayed into the model.
+        const clean = chunk.replace(TOOL_MARKER, "");
+        if (!clean) continue;
+        fullResponse += clean;
+        res.write(`data: ${JSON.stringify({ type: "chunk", content: clean })}\n\n`);
       }
 
       await prisma.chatMessage.create({

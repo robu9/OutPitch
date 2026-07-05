@@ -29,16 +29,22 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!user) return;
-    apiFetch<{ linkedinConnected: boolean; gmailConnected: boolean }>(
-      "/api/onboarding/status",
-      { clerkUserId: user.id }
-    )
+    apiFetch<{
+      linkedinConnected: boolean;
+      gmailConnected: boolean;
+      onboardingDone: boolean;
+    }>("/api/onboarding/status", { clerkUserId: user.id })
       .then((status) => {
+        // Returning users who already finished onboarding skip the wizard.
+        if (status.onboardingDone) {
+          router.replace("/chat");
+          return;
+        }
         setLinkedinConnected(status.linkedinConnected);
         setGmailConnected(status.gmailConnected);
       })
       .catch(() => {});
-  }, [user]);
+  }, [user, router]);
 
   async function connectLinkedIn() {
     if (!user) return;
@@ -82,6 +88,7 @@ export default function OnboardingPage() {
   async function handleSubmit() {
     if (!user) return;
     setLoading(true);
+    setError(null);
     try {
       await apiFetch("/api/onboarding/complete", {
         method: "POST",
@@ -96,6 +103,8 @@ export default function OnboardingPage() {
         }),
       });
       router.push("/chat");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to finish onboarding");
     } finally {
       setLoading(false);
     }

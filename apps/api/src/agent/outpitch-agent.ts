@@ -342,7 +342,7 @@ async function executeTool(
       const campaign = await prisma.outreachCampaign.create({
         data: {
           userId: ctx.userId,
-          companyId: args.companyId as string ?? (await prisma.company.findFirst())?.id ?? "",
+          companyId: (args.companyId as string | undefined) ?? null,
           subject: args.subject as string,
           body: args.body as string,
           status: "sent",
