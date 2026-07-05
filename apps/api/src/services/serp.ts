@@ -252,11 +252,174 @@ export async function searchCompanies(params: CompanySearchParams) {
   return companies;
 }
 
-export async function searchPeopleAtCompany(
+export interface PersonSearchResult {
+  name: string;
+  title: string;
+  linkedinUrl?: string;
+}
+
+interface PerplexityAgentOutputItem {
+  type: string;
+  queries?: string[];
+  results?: Array<{
+    url?: string;
+    title?: string;
+    snippet?: string;
+  }>;
+  role?: string;
+  content?: Array<{
+    type: string;
+    text?: string;
+  }>;
+}
+
+function parseNameFromLinkedInTitle(title: string): string {
+  const nameMatch = title.match(/^([^-|–]+)/);
+  return nameMatch?.[1]?.trim() ?? "Unknown";
+}
+
+function parseJsonFromAgentText(text: string): { people?: PersonSearchResult[] } | null {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = (fenced?.[1] ?? text).trim();
+  try {
+    return JSON.parse(candidate) as { people?: PersonSearchResult[] };
+  } catch {
+    const start = candidate.indexOf("{");
+    const end = candidate.lastIndexOf("}");
+    if (start === -1 || end <= start) return null;
+    try {
+      return JSON.parse(candidate.slice(start, end + 1)) as { people?: PersonSearchResult[] };
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractAgentOutputText(output: PerplexityAgentOutputItem[]): string {
+  return output
+    .filter((item) => item.type === "message")
+    .flatMap((item) => item.content ?? [])
+    .filter((c) => c.type === "output_text" && c.text)
+    .map((c) => c.text!)
+    .join("");
+}
+
+function peopleFromPerplexityAgentOutput(output: PerplexityAgentOutputItem[]): PersonSearchResult[] {
+  const people: PersonSearchResult[] = [];
+
+  const outputText = extractAgentOutputText(output);
+  const parsed = outputText ? parseJsonFromAgentText(outputText) : null;
+  if (parsed?.people?.length) {
+    for (const person of parsed.people) {
+      if (!person.name?.trim()) continue;
+      people.push({
+        name: person.name.trim(),
+        title: person.title?.trim() || "Contact",
+        linkedinUrl: person.linkedinUrl,
+      });
+    }
+  }
+
+  for (const item of output) {
+    if (item.type !== "people_search_results") continue;
+    for (const result of item.results ?? []) {
+      const url = result.url ?? "";
+      if (!url.includes("linkedin.com/in/")) continue;
+      const name = parseNameFromLinkedInTitle(result.title ?? "");
+      if (name === "Unknown") continue;
+      people.push({
+        name,
+        title: result.snippet?.slice(0, 120) || "Contact",
+        linkedinUrl: url,
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  return people.filter((p) => {
+    const key = p.name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function searchPeopleWithPerplexity(
+  domain: string,
+  companyName: string,
+  titles: string[] = ["founder", "CEO", "recruiter", "talent", "HR"]
+): Promise<PersonSearchResult[]> {
+  if (!config.perplexityApiKey) {
+    return [];
+  }
+
+  const input = `Find up to 5 real professionals at ${companyName} (${domain}) who are good cold-outreach targets for job seekers.
+
+Prioritize people in these roles: ${titles.join(", ")}.
+
+Use the people_search tool to find LinkedIn profiles and confirm they are associated with ${companyName} or ${domain}.
+
+Return ONLY valid JSON with no markdown:
+{
+  "people": [
+    { "name": "Full Name", "title": "Job Title", "linkedinUrl": "https://www.linkedin.com/in/..." }
+  ]
+}`;
+
+  try {
+    const response = await fetch("https://api.perplexity.ai/v1/agent", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.perplexityApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-5-mini",
+        reasoning: { effort: "low" },
+        tools: [
+          {
+            type: "people_search",
+            max_tokens: 5000,
+            max_tokens_per_page: 500,
+          },
+        ],
+        max_steps: 3,
+        input,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.warn(`Perplexity people_search error ${response.status} for ${domain}: ${errText}`);
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      output?: PerplexityAgentOutputItem[];
+      output_text?: string;
+    };
+
+    if (data.output?.length) {
+      return peopleFromPerplexityAgentOutput(data.output);
+    }
+
+    if (data.output_text) {
+      const parsed = parseJsonFromAgentText(data.output_text);
+      return (parsed?.people ?? []).filter((p) => p.name?.trim());
+    }
+
+    return [];
+  } catch (error) {
+    console.error(`[serp] Perplexity people_search failed for ${domain}:`, error);
+    return [];
+  }
+}
+
+async function searchPeopleAtCompanyWithSerper(
   domain: string,
   titles: string[] = ["founder", "CEO", "recruiter", "talent", "HR"]
-) {
-  const people: Array<{ name: string; title: string; linkedinUrl?: string }> = [];
+): Promise<PersonSearchResult[]> {
+  const people: PersonSearchResult[] = [];
 
   // Plain-keyword query (free Serper plan rejects site:/quoted operators). We still
   // keep only linkedin.com/in profile links below, so precision stays reasonable.
@@ -271,10 +434,8 @@ export async function searchPeopleAtCompany(
   for (const { title, results } of resultSets) {
     for (const result of results) {
       if (!result.link.includes("linkedin.com/in/")) continue;
-      const nameMatch = result.title.match(/^([^-|]+)/);
-      const name = nameMatch?.[1]?.trim() ?? "Unknown";
       people.push({
-        name,
+        name: parseNameFromLinkedInTitle(result.title),
         title,
         linkedinUrl: result.link,
       });
@@ -288,6 +449,21 @@ export async function searchPeopleAtCompany(
     seen.add(key);
     return true;
   });
+}
+
+export async function searchPeopleAtCompany(
+  domain: string,
+  companyName?: string,
+  titles: string[] = ["founder", "CEO", "recruiter", "talent", "HR"]
+): Promise<PersonSearchResult[]> {
+  if (config.perplexityApiKey && companyName) {
+    const perplexityPeople = await searchPeopleWithPerplexity(domain, companyName, titles);
+    if (perplexityPeople.length > 0) {
+      return perplexityPeople;
+    }
+  }
+
+  return searchPeopleAtCompanyWithSerper(domain, titles);
 }
 
 export { serpSearch };

@@ -222,7 +222,13 @@ async function processPipeline(job: Job<PipelineJobData>) {
           .filter((e: string | null | undefined): e is string => !!e);
       }
 
-      const people = await searchPeopleAtCompany(company.domain);
+      await updateJob(jobId, {
+        status: "enriching",
+        progress: progress + 3,
+        message: `Finding contacts at ${company.name} with Perplexity...`,
+      });
+
+      const people = await searchPeopleAtCompany(company.domain, company.name);
       const contacts: Array<{
         name: string;
         title?: string;
@@ -267,8 +273,8 @@ async function processPipeline(job: Job<PipelineJobData>) {
 
       await updateJob(jobId, {
         status: "enriching",
-        progress: progress + 3,
-        message: `Resolving contacts at ${company.name}...`,
+        progress: progress + 4,
+        message: `Resolving emails for contacts at ${company.name}...`,
       });
 
       for (const { person, existing, resolved } of candidates) {
