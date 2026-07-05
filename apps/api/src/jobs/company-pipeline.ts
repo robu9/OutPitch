@@ -3,7 +3,10 @@ import { prisma, type CompanyContact } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import { searchCompanies, searchPeopleAtCompany } from "../services/serp.js";
 import { crawlCompanyWebsite } from "../services/crawler.js";
-import { resolveEmail } from "../services/email-resolver.js";
+import {
+  resolveEmail,
+  pickDepartmentEmail,
+} from "../services/email-resolver.js";
 import {
   ingestCompanyContext,
   companyDataset,
@@ -305,6 +308,46 @@ async function processPipeline(job: Job<PipelineJobData>) {
               linkedinUrl: person.linkedinUrl,
               source: resolved.source,
               confidence: resolved.confidence,
+            },
+          });
+        }
+      }
+
+      // Careers / jobs inboxes are valid outreach targets — surface them when found on-site.
+      const department = pickDepartmentEmail(crawledEmails);
+      if (department && !contacts.some((c) => c.email === department.email)) {
+        const deptName = `${company.name} ${department.title}`;
+        const existingDept = dbCompany.contacts.find(
+          (c: CompanyContact) => c.email?.toLowerCase() === department.email
+        );
+
+        contacts.push({
+          name: deptName,
+          title: department.title,
+          email: department.email,
+          source: "crawl",
+          confidence: 85,
+        });
+
+        if (existingDept) {
+          await prisma.companyContact.update({
+            where: { id: existingDept.id },
+            data: {
+              name: deptName,
+              title: department.title,
+              source: "crawl",
+              confidence: 85,
+            },
+          });
+        } else {
+          await prisma.companyContact.create({
+            data: {
+              companyId: dbCompany.id,
+              name: deptName,
+              title: department.title,
+              email: department.email,
+              source: "crawl",
+              confidence: 85,
             },
           });
         }
