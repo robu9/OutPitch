@@ -23,7 +23,7 @@ router.get(
       orderBy: { matchScore: "desc" },
     });
 
-    const companyIds = links.map((l) => l.companyId);
+    const companyIds = links.map((l: UserCompanyLink) => l.companyId);
     const campaigns = companyIds.length
       ? await prisma.outreachCampaign.findMany({
           where: { userId, companyId: { in: companyIds } },

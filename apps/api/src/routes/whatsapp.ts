@@ -1,6 +1,6 @@
 import { Router, type Request } from "express";
 import { z } from "zod";
-import { prisma } from "@outpitch/db";
+import { prisma, type ChatMessage } from "@outpitch/db";
 import { config } from "../config.js";
 import { asyncHandler } from "../middleware/error.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -181,8 +181,8 @@ async function processMessage(from: string, text: string): Promise<void> {
   });
 
   const agentHistory = history
-    .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({ role: m.role, content: m.content }));
+    .filter((m: ChatMessage) => m.role === "user" || m.role === "assistant")
+    .map((m: ChatMessage) => ({ role: m.role, content: m.content }));
 
   let reply = "";
   try {

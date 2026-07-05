@@ -4,7 +4,7 @@ import {
   SchemaType,
 } from "@google/generative-ai";
 import { config } from "../config.js";
-import { prisma } from "@outpitch/db";
+import { prisma, type CompanyContact } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import {
   remember,
@@ -449,12 +449,12 @@ async function executeTool(
       const contactName = args.contactName as string;
       const contact =
         company?.contacts.find(
-          (c) => c.name.toLowerCase() === contactName.toLowerCase()
+          (c: CompanyContact) => c.name.toLowerCase() === contactName.toLowerCase()
         ) ??
-        company?.contacts.find((c) =>
+        company?.contacts.find((c: CompanyContact) =>
           c.name.toLowerCase().includes(contactName.toLowerCase())
         ) ??
-        company?.contacts.find((c) => c.email);
+        company?.contacts.find((c: CompanyContact) => c.email);
 
       const memory = companyId
         ? await recallUserAndCompany(

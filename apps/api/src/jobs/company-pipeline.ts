@@ -1,5 +1,5 @@
 import { Queue, Worker, type Job, type ConnectionOptions } from "bullmq";
-import { prisma, type CompanyContact } from "@outpitch/db";
+import { prisma, type CompanyContact, type Prisma } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import { searchCompanies, searchPeopleAtCompany } from "../services/serp.js";
 import { crawlCompanyWebsite } from "../services/crawler.js";
@@ -46,7 +46,7 @@ async function updateJob(
   await prisma.pipelineJob.update({
     where: { id: jobId },
     // `result` is a Prisma Json column; the loose `unknown` here is a valid JSON value.
-    data: update as Parameters<typeof prisma.pipelineJob.update>[0]["data"],
+    data: update as Prisma.PipelineJobUpdateInput,
   });
 }
 

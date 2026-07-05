@@ -46,7 +46,7 @@ interface Company {
 
 const outreachLabels: Record<string, string> = {
   draft: "Draft ready",
-  pending: "Sendingù",
+  pending: "Sending...",
   sent: "Email sent",
   replied: "Replied",
 };
@@ -191,7 +191,7 @@ export default function CompaniesPage() {
                             company.outreach.status !== "draft" && (
                               <>
                                 {" "}
-                                ∑ Outreach to {company.outreach.contactName}
+                                ¬∑ Outreach to {company.outreach.contactName}
                                 {company.outreach.sentAt &&
                                   ` on ${new Date(company.outreach.sentAt).toLocaleDateString()}`}
                               </>
@@ -199,7 +199,7 @@ export default function CompaniesPage() {
                           {company.outreach?.status === "draft" && (
                             <>
                               {" "}
-                              ∑{" "}
+                              ¬∑{" "}
                               <Link href="/outreach" className="hover:text-foreground">
                                 Draft ready to send
                               </Link>
@@ -251,8 +251,8 @@ export default function CompaniesPage() {
                                 <span className="text-sm text-foreground">{contact.name}</span>
                                 {contact.title && (
                                   <span className="text-sm text-text-secondary">
-                                    {" "}
-                                    ù {contact.title}
+                                    {" - "}
+                                    {contact.title}
                                   </span>
                                 )}
                               </div>
