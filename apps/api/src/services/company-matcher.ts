@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@outpitch/db";
 import { config } from "../config.js";
 import { recall, userDataset } from "./cognee.js";
+import { resolveEffectiveCompanySize, userWantsLargeCompanies } from "./company-size.js";
 
 export const MIN_MATCH_SCORE = 55;
 
@@ -160,7 +161,8 @@ export async function scoreCompanyAgainstUser(
   userContext: UserMatchContext,
   company: CompanyCandidate,
   companyContext: string,
-  searchRole: string
+  searchRole: string,
+  companySize?: string
 ): Promise<{ score: number; reason: string }> {
   if (isRecruitmentOrJobBoard(company)) {
     return { score: 0, reason: "Recruitment agency or job board" };
@@ -181,6 +183,16 @@ export async function scoreCompanyAgainstUser(
       ? `\nUser memory (preferences, past feedback, goals):\n${userContext.memories.slice(0, 8).join("\n---\n")}`
       : "";
 
+  const effectiveSize = resolveEffectiveCompanySize(companySize);
+  const allowLargeCompanies = userWantsLargeCompanies({
+    companySize,
+    preferenceNotes: userContext.memories,
+  });
+
+  const sizeRule = allowLargeCompanies
+    ? `- Company size preference: ${effectiveSize}`
+    : `- Default company size preference: ${effectiveSize}. Score lower for household-name tech giants or extremely well-known companies (e.g. Google, Meta, Stripe, Vercel, Hugging Face, LangChain) unless user memory explicitly asks for large/enterprise companies. Score higher for medium-sized, lesser-known employers where cold outreach is more realistic.`;
+
   const prompt = `You score how well a company fits a job seeker's outreach targets.
 
 Job seeker profile:
@@ -198,6 +210,7 @@ Website context: ${companyContext.slice(0, 2000)}
 Rules:
 - Score 0 if this is a recruitment agency, staffing firm, job board, career site aggregator, or company that helps others hire (not an actual employer).
 - Active job postings are not required — score companies that operate in the user's target field and could plausibly employ people in the search role.
+${sizeRule}
 - Score higher when the company matches user skills, industries, location, and memory preferences.
 - Score lower for bad past feedback patterns in user memory.
 - Return JSON only: {"score": number 0-100, "reason": "one short sentence"}`;

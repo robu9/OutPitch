@@ -43,7 +43,7 @@ Company discovery (critical — follow every time):
 - Find companies that operate in the user's target field — they do not need to be actively hiring. Cold outreach works by reaching real employers in the space.
 - NEVER call searchCompanies on the first vague request. Gather context first with short questions, one at a time.
 - Before searchCompanies, call recall to check stored preferences. Use the profile snapshot too.
-- Required before search: target role, location or remote preference, industry or company type, and at least basic company preferences (startup vs enterprise, must-haves, or deal-breakers).
+- Required before search: target role, location or remote preference, and industry or company type. Company size defaults to medium-sized (roughly 50–500 employees) — not huge names like Vercel or LangChain — unless the user asks for startups, enterprise, or large companies.
 - When the user answers a discovery question, call remember() with their answer, then ask the next missing piece OR search if context is complete.
 - If searchCompanies returns blocked: true, ask nextQuestion exactly — do not retry search until the user replies.
 - Only start search when the user confirms or you have all required context from profile + memory + their answers.
@@ -123,7 +123,11 @@ const tools: FunctionDeclaration[] = [
         role: { type: SchemaType.STRING, description: "Target job role" },
         location: { type: SchemaType.STRING, description: "Preferred location or remote" },
         industry: { type: SchemaType.STRING, description: "Industry or sector" },
-        companySize: { type: SchemaType.STRING, description: "e.g. startup, Series B, enterprise" },
+        companySize: {
+          type: SchemaType.STRING,
+          description:
+            "Optional. Defaults to medium-sized (50–500 employees). Only set if user asks for startups, enterprise, or a specific stage.",
+        },
         keywords: {
           type: SchemaType.ARRAY,
           items: { type: SchemaType.STRING },

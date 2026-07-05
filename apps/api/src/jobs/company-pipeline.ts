@@ -368,7 +368,8 @@ async function processPipeline(job: Job<PipelineJobData>) {
         userContext,
         company,
         companyContext,
-        params.role
+        params.role,
+        params.companySize
       );
 
       if (matchScore < MIN_MATCH_SCORE) {

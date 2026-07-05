@@ -1,7 +1,8 @@
 import type { CompanySearchParams } from "@outpitch/types";
 import { buildUserMatchContext } from "./company-matcher.js";
+import { DEFAULT_COMPANY_SIZE, resolveEffectiveCompanySize } from "./company-size.js";
 
-export type SearchContextGap = "role" | "location" | "industry" | "company_preferences";
+export { DEFAULT_COMPANY_SIZE, resolveEffectiveCompanySize } from "./company-size.js";
 
 export interface ResolvedSearchContext {
   role?: string;
@@ -24,7 +25,9 @@ const REMOTE_PATTERN =
   /\b(remote|fully remote|work from home|wfh|anywhere|distributed|location.?agnostic)\b/i;
 
 const COMPANY_PREF_PATTERN =
-  /\b(startup|early.?stage|series [a-d]|enterprise|faang|mid.?size|scale.?up|yc|seed|growth stage|small team|big corp|stealth)\b/i;
+  /\b(startup|early.?stage|series [a-d]|enterprise|faang|mid.?size|medium.?size|scale.?up|yc|seed|growth stage|small team|big corp|stealth|large compan|household.?name)\b/i;
+
+export type SearchContextGap = "role" | "location" | "industry" | "company_preferences";
 
 function pickFirst(...values: Array<string | undefined | null>): string | undefined {
   for (const value of values) {
@@ -32,10 +35,6 @@ function pickFirst(...values: Array<string | undefined | null>): string | undefi
     if (trimmed) return trimmed;
   }
   return undefined;
-}
-
-function memoryMentions(blob: string, pattern: RegExp): boolean {
-  return pattern.test(blob);
 }
 
 function extractRoleFromMemories(memories: string[]): string | undefined {
@@ -78,6 +77,7 @@ function buildContextSummary(context: ResolvedSearchContext): string {
   if (context.location) parts.push(`Location: ${context.location}`);
   if (context.industry) parts.push(`Industry: ${context.industry}`);
   if (context.companySize) parts.push(`Company size: ${context.companySize}`);
+  else parts.push(`Company size: ${DEFAULT_COMPANY_SIZE} (default)`);
   if (context.keywords.length) parts.push(`Keywords: ${context.keywords.join(", ")}`);
   if (context.preferenceNotes.length) {
     parts.push(`Preferences: ${context.preferenceNotes.slice(0, 3).join("; ")}`);
@@ -97,7 +97,7 @@ function nextDiscoveryQuestion(missing: SearchContextGap[], context: ResolvedSea
     case "industry":
       return "What industry or type of company should I focus on — for example AI startups, fintech, healthtech, or B2B SaaS?";
     case "company_preferences":
-      return "What kind of companies excite you most — early-stage startups, growth-stage, or larger established companies? Any must-haves or deal-breakers?";
+      return "I'll focus on medium-sized companies by default — roughly 50–500 people, not huge names like Vercel or LangChain. Want early-stage startups or larger enterprises instead? Any must-haves or deal-breakers?";
     default:
       return "Tell me a bit more about your ideal next role so I can find better matches.";
   }
@@ -153,7 +153,6 @@ export async function assessSearchReadiness(
   proposed?: Partial<CompanySearchParams>
 ): Promise<SearchReadinessResult> {
   const userContext = await buildUserMatchContext(userId, clerkId, cogneeToken);
-  const memoryBlob = userContext.memories.join("\n");
 
   const profileLines = userContext.summary.split("\n");
   const profileRole = profileLines.find((l) => l.startsWith("Target role:"))?.slice(12).trim();
@@ -188,18 +187,6 @@ export async function assessSearchReadiness(
   if (!context.location) missing.push("location");
   if (!context.industry) missing.push("industry");
 
-  const hasCompanyPreferences =
-    Boolean(context.companySize) ||
-    context.keywords.length > 0 ||
-    context.preferenceNotes.length > 0 ||
-    memoryMentions(memoryBlob, COMPANY_PREF_PATTERN) ||
-    userContext.summary.includes("Summary:") ||
-    userContext.memories.length >= 2;
-
-  if (!hasCompanyPreferences && missing.length === 0) {
-    missing.push("company_preferences");
-  }
-
   const ready = missing.length === 0;
   const contextSummary = buildContextSummary(context);
 
@@ -220,7 +207,7 @@ export function toSearchParams(
     role: context.role ?? proposed?.role ?? "",
     location: context.location ?? proposed?.location,
     industry: context.industry ?? proposed?.industry,
-    companySize: context.companySize ?? proposed?.companySize,
+    companySize: resolveEffectiveCompanySize(context.companySize ?? proposed?.companySize),
     keywords: context.keywords.length ? context.keywords : proposed?.keywords,
     limit: proposed?.limit ?? 10,
   };

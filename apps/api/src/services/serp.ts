@@ -1,5 +1,10 @@
 import { config } from "../config.js";
 import type { CompanySearchParams } from "@outpitch/types";
+import {
+  DEFAULT_COMPANY_SIZE,
+  resolveEffectiveCompanySize,
+  userWantsLargeCompanies,
+} from "./company-size.js";
 
 interface SerpResult {
   title: string;
@@ -93,19 +98,20 @@ function buildCompanySearchQueries(params: CompanySearchParams): string[] {
   const role = params.role;
   const location = params.location ?? "";
   const industry = params.industry ?? "";
-  const companySize = params.companySize ?? "";
+  const companySize = resolveEffectiveCompanySize(params.companySize);
   const keywords = (params.keywords ?? []).join(" ");
   const clean = (q: string) => q.replace(/\s+/g, " ").trim();
 
   const queries: string[] = [];
 
   if (industry) {
-    queries.push(clean(`${industry} company ${location} ${companySize} ${keywords}`));
-    queries.push(clean(`${industry} startup ${location} ${keywords}`));
-    queries.push(clean(`${role} ${industry} company ${location}`));
+    queries.push(clean(`${industry} mid-size company ${location} ${keywords}`));
+    queries.push(clean(`${industry} growth stage company ${location} ${keywords}`));
+    queries.push(clean(`${role} ${industry} company ${location} ${companySize}`));
   } else {
-    queries.push(clean(`${role} company ${location} ${companySize} ${keywords}`));
-    queries.push(clean(`${role} startup ${location} ${keywords}`));
+    queries.push(clean(`${role} mid-size company ${location} ${keywords}`));
+    queries.push(clean(`${role} growth stage company ${location} ${keywords}`));
+    queries.push(clean(`${role} company ${location} ${companySize}`));
   }
 
   return queries;
@@ -122,19 +128,34 @@ export async function searchCompaniesWithPerplexity(params: CompanySearchParams)
     return [];
   }
 
+  const effectiveSize = resolveEffectiveCompanySize(params.companySize);
+  const allowLargeCompanies = userWantsLargeCompanies({
+    companySize: params.companySize,
+    keywords: params.keywords,
+  });
+
+  const sizeGuidance = allowLargeCompanies
+    ? `Company Size: ${effectiveSize} (user asked for larger or enterprise companies — include them when relevant)`
+    : `Company Size: ${effectiveSize}
+
+IMPORTANT — company size bias (default):
+- Prioritize medium-sized companies: roughly 50–500 employees, Series B–D, profitable scale-ups, or strong regional players in the space.
+- Do NOT recommend household-name tech giants or extremely well-known companies (e.g. Google, Meta, Amazon, Microsoft, Apple, Netflix, Stripe, Vercel, Hugging Face, LangChain, OpenAI, Anthropic, Notion, Figma) unless the user explicitly asked for large/enterprise companies.
+- Prefer lesser-known but real employers where cold outreach is more likely to reach a decision-maker.`;
+
   const prompt = `You are an expert company discovery agent. Find and recommend real, existing companies that operate in the user's target field and could plausibly employ people in the search role. Active job postings are not required — cold outreach targets real employers in the space. Use your web search capabilities to find accurate, up-to-date companies.
 
 Role: ${params.role}
 Location: ${params.location ?? "Any"}
 Industry: ${params.industry ?? "Any"}
-Company Size: ${params.companySize ?? "Any"}
+${sizeGuidance}
 Keywords/Preferences: ${(params.keywords ?? []).join(", ") || "None"}
 
 Rules:
-- Recommend ONLY real, actual companies with valid, operational domains (e.g. "stripe.com", "vercel.com").
+- Recommend ONLY real, actual companies with valid, operational domains (e.g. "posthog.com", "inngest.com").
 - Avoid generic placeholders or fake websites.
 - Provide a concise description of what they do and why they match.
-- For each company, provide a valid "sourceUrl" (their main domain or about page, e.g. "https://stripe.com" or "https://stripe.com/about").
+- For each company, provide a valid "sourceUrl" (their main domain or about page, e.g. "https://posthog.com" or "https://posthog.com/about").
 - NEVER recommend recruitment agencies, staffing firms, or job boards (e.g. indeed, glassdoor, linkedin, upwork).
 - Return a JSON object with a single "companies" key containing an array of up to ${params.limit || 10} companies:
 {
@@ -158,7 +179,10 @@ Rules:
       body: JSON.stringify({
         model: "sonar",
         messages: [
-          { role: "system", content: "You are an expert company discovery agent that outputs ONLY structured JSON conforming to the requested schema." },
+          {
+            role: "system",
+            content: `You are an expert company discovery agent that outputs ONLY structured JSON conforming to the requested schema. Default to medium-sized companies (${DEFAULT_COMPANY_SIZE}) unless the user explicitly wants large or enterprise companies.`,
+          },
           { role: "user", content: prompt }
         ],
         response_format: {
