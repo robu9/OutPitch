@@ -13,12 +13,12 @@ interface LogoProps {
 }
 
 const sizes = {
-  sm: { gap: "gap-2", text: "text-base", icon: "h-5 w-5" },
-  md: { gap: "gap-2.5", text: "text-xl", icon: "h-6 w-6" },
-  lg: { gap: "gap-3", text: "text-xl", icon: "h-7 w-7" },
+  sm: { gap: "gap-2.5", text: "text-xl", icon: "h-7 w-7" },
+  md: { gap: "gap-3", text: "text-[1.65rem]", icon: "h-8 w-8" },
+  lg: { gap: "gap-3", text: "text-3xl", icon: "h-9 w-9" },
 };
 
-/** Outbound pitch — rounded tile with an up-right arrow. */
+/** Outbound pitch — hex tile with a centered up-right arrow. */
 function BrandMark({
   className,
   variant = "brand",
@@ -26,7 +26,7 @@ function BrandMark({
   className?: string;
   variant?: "brand" | "app";
 }) {
-  const tile = variant === "app" ? "var(--btn-primary-bg)" : "var(--accent-blue)";
+  const fill = variant === "app" ? "var(--btn-primary-bg)" : "var(--accent-blue)";
   const arrow = "#ffffff";
 
   return (
@@ -37,11 +37,14 @@ function BrandMark({
       className={cn("shrink-0", className)}
       aria-hidden
     >
-      <rect width="32" height="32" rx="8" fill={tile} />
       <path
-        d="M10.5 21.5L21.5 10.5M21.5 10.5H14.75M21.5 10.5V17.25"
+        d="M16 2.5L27.5 9.25V22.75L16 29.5L4.5 22.75V9.25L16 2.5Z"
+        fill={fill}
+      />
+      <path
+        d="M12.25 19.75L19.75 12.25M19.75 12.25H15.1M19.75 12.25V16.9"
         stroke={arrow}
-        strokeWidth="2.25"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -63,7 +66,7 @@ export function Logo({
   ) : (
     <span
       className={cn(
-        "inline-flex items-center font-sans font-medium tracking-tight text-foreground",
+        "inline-flex items-center font-sans font-bold tracking-tight text-foreground",
         s.gap,
         s.text,
         className
