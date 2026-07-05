@@ -13,13 +13,52 @@ router.get(
   "/",
   requireAuth,
   asyncHandler(async (req, res) => {
+    const userId = req.auth!.userId;
+
     const links = await prisma.userCompanyLink.findMany({
-      where: { userId: req.auth!.userId },
+      where: { userId },
       include: {
         company: { include: { contacts: true } },
       },
       orderBy: { matchScore: "desc" },
     });
+
+    const companyIds = links.map((l) => l.companyId);
+    const campaigns = companyIds.length
+      ? await prisma.outreachCampaign.findMany({
+          where: { userId, companyId: { in: companyIds } },
+          select: {
+            id: true,
+            companyId: true,
+            status: true,
+            sentAt: true,
+            contact: { select: { name: true, email: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+        })
+      : [];
+
+    const outreachByCompany = new Map<
+      string,
+      {
+        status: string;
+        sentAt: Date | null;
+        campaignId: string;
+        contactName?: string | null;
+        contactEmail?: string | null;
+      }
+    >();
+
+    for (const campaign of campaigns) {
+      if (!campaign.companyId || outreachByCompany.has(campaign.companyId)) continue;
+      outreachByCompany.set(campaign.companyId, {
+        status: campaign.status,
+        sentAt: campaign.sentAt,
+        campaignId: campaign.id,
+        contactName: campaign.contact?.name,
+        contactEmail: campaign.contact?.email,
+      });
+    }
 
     type LinkWithCompany = UserCompanyLink & {
       company: Company & { contacts: CompanyContact[] };
@@ -31,6 +70,7 @@ router.get(
         matchScore: l.matchScore,
         feedback: l.feedback,
         discoveredAt: l.discoveredAt,
+        outreach: outreachByCompany.get(l.companyId) ?? null,
       })),
     });
   })

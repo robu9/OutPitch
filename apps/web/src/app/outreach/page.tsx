@@ -15,11 +15,12 @@ import { Clock, Mail, MessageSquare, Reply, Send } from "lucide-react";
 interface Campaign {
   id: string;
   companyId?: string | null;
+  contactId?: string | null;
   subject?: string;
   body?: string;
   status: string;
   sentAt?: string;
-  company: { name: string };
+  company?: { name: string } | null;
   contact?: { name: string; email?: string };
 }
 
@@ -67,7 +68,7 @@ export default function OutreachPage() {
   );
 
   async function sendCampaign(campaign: Campaign, trackSending = true) {
-    if (!user) return false;
+    if (!user || campaign.status !== "draft") return false;
     const to = campaign.contact?.email;
     const subject = campaign.subject?.trim();
     const body = campaign.body?.trim();
@@ -79,6 +80,9 @@ export default function OutreachPage() {
       delete next[campaign.id];
       return next;
     });
+    setCampaigns((prev) =>
+      prev.map((c) => (c.id === campaign.id ? { ...c, status: "pending" } : c))
+    );
 
     try {
       await sendOutreachEmail(user.id, {
@@ -87,6 +91,7 @@ export default function OutreachPage() {
         body,
         campaignId: campaign.id,
         companyId: campaign.companyId ?? undefined,
+        contactId: campaign.contactId ?? undefined,
       });
       setCampaigns((prev) =>
         prev.map((c) =>
@@ -97,6 +102,9 @@ export default function OutreachPage() {
       );
       return true;
     } catch (err) {
+      setCampaigns((prev) =>
+        prev.map((c) => (c.id === campaign.id ? { ...c, status: "draft" } : c))
+      );
       const message = err instanceof Error ? err.message : "Failed to send";
       setErrors((prev) => ({ ...prev, [campaign.id]: message }));
       return false;
@@ -197,13 +205,14 @@ export default function OutreachPage() {
                 const config = statusConfig[campaign.status] ?? statusConfig.pending;
                 const StatusIcon = config.icon;
                 const isDraft = campaign.status === "draft";
+                const isPending = campaign.status === "pending";
                 const to = campaign.contact?.email ?? "";
                 const canSend =
                   isDraft &&
                   isValidEmail(to) &&
                   Boolean(campaign.subject?.trim()) &&
                   Boolean(campaign.body?.trim());
-                const sending = sendingId === campaign.id || sendingAll;
+                const sending = sendingId === campaign.id || sendingAll || isPending;
                 const error = errors[campaign.id];
 
                 return (
@@ -227,7 +236,8 @@ export default function OutreachPage() {
                       {campaign.subject ?? "No subject"}
                     </h3>
                     <p className="mt-1 text-sm text-text-secondary">
-                      {campaign.contact?.name ?? "Hiring team"} at {campaign.company.name}
+                      {campaign.contact?.name ?? "Hiring team"}
+                      {campaign.company?.name ? ` at ${campaign.company.name}` : ""}
                       {campaign.contact?.email && ` · ${campaign.contact.email}`}
                     </p>
                     {campaign.body && (

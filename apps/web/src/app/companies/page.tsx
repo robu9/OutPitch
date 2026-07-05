@@ -35,7 +35,21 @@ interface Company {
     source: string;
     confidence: number;
   }>;
+  outreach?: {
+    status: string;
+    sentAt?: string | null;
+    campaignId: string;
+    contactName?: string | null;
+    contactEmail?: string | null;
+  } | null;
 }
+
+const outreachLabels: Record<string, string> = {
+  draft: "Draft ready",
+  pending: "Sendingù",
+  sent: "Email sent",
+  replied: "Replied",
+};
 
 export default function CompaniesPage() {
   const { user } = useUser();
@@ -148,6 +162,21 @@ export default function CompaniesPage() {
                             <ExternalLink className="h-3 w-3" aria-hidden />
                           </a>
                           <Badge variant="outline">{company.matchScore}% match</Badge>
+                          {company.outreach && (
+                            <Link href="/outreach">
+                              <Badge
+                                variant={
+                                  company.outreach.status === "sent" ||
+                                  company.outreach.status === "replied"
+                                    ? "primary"
+                                    : "outline"
+                                }
+                              >
+                                {outreachLabels[company.outreach.status] ??
+                                  company.outreach.status}
+                              </Badge>
+                            </Link>
+                          )}
                         </div>
                         {company.description && (
                           <p className="mt-1 text-sm text-text-secondary line-clamp-2 text-pretty">
@@ -158,6 +187,24 @@ export default function CompaniesPage() {
                           {hasContacts
                             ? `${company.contacts.length} contacts found`
                             : "Contacts pending"}
+                          {company.outreach?.contactName &&
+                            company.outreach.status !== "draft" && (
+                              <>
+                                {" "}
+                                ∑ Outreach to {company.outreach.contactName}
+                                {company.outreach.sentAt &&
+                                  ` on ${new Date(company.outreach.sentAt).toLocaleDateString()}`}
+                              </>
+                            )}
+                          {company.outreach?.status === "draft" && (
+                            <>
+                              {" "}
+                              ∑{" "}
+                              <Link href="/outreach" className="hover:text-foreground">
+                                Draft ready to send
+                              </Link>
+                            </>
+                          )}
                         </p>
                       </div>
 
@@ -205,7 +252,7 @@ export default function CompaniesPage() {
                                 {contact.title && (
                                   <span className="text-sm text-text-secondary">
                                     {" "}
-                                    ¬∑ {contact.title}
+                                    ù {contact.title}
                                   </span>
                                 )}
                               </div>

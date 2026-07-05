@@ -100,6 +100,7 @@ export const SendEmailPayloadSchema = z.object({
   body: z.string().min(1),
   campaignId: z.string().optional(),
   companyId: z.string().optional(),
+  contactId: z.string().optional(),
 });
 export type SendEmailPayload = z.infer<typeof SendEmailPayloadSchema>;
 

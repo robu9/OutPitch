@@ -3,7 +3,8 @@ import { SendEmailPayloadSchema } from "@outpitch/types";
 import { prisma } from "@outpitch/db";
 import { asyncHandler, AppError } from "../middleware/error.js";
 import { requireAuth } from "../middleware/auth.js";
-import { sendEmail, fetchEmails } from "../services/composio.js";
+import { fetchEmails } from "../services/composio.js";
+import { sendOutreachCampaign } from "../services/outreach-send.js";
 
 const router = Router();
 
@@ -31,34 +32,14 @@ router.post(
       throw new AppError(400, "Gmail not connected", "GMAIL_NOT_CONNECTED");
     }
 
-    const result = await sendEmail(req.auth!.clerkId, {
-      to: payload.to,
-      subject: payload.subject,
-      body: payload.body,
-    });
+    const result = await sendOutreachCampaign(
+      req.auth!.userId,
+      req.auth!.clerkId,
+      payload,
+      { cogneeToken: user.cogneeToken ?? undefined }
+    );
 
-    let campaign;
-    if (payload.campaignId) {
-      campaign = await prisma.outreachCampaign.update({
-        where: { id: payload.campaignId },
-        data: { status: "sent", sentAt: new Date() },
-      });
-    } else {
-      campaign = await prisma.outreachCampaign.create({
-        data: {
-          user: { connect: { id: req.auth!.userId } },
-          ...(payload.companyId
-            ? { company: { connect: { id: payload.companyId } } }
-            : {}),
-          subject: payload.subject,
-          body: payload.body,
-          status: "sent",
-          sentAt: new Date(),
-        },
-      });
-    }
-
-    res.json({ success: true, result, campaignId: campaign?.id });
+    res.json(result);
   })
 );
 

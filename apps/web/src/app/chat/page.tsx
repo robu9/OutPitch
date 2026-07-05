@@ -635,7 +635,7 @@ function EmailDraftsCard({
   const hasInvalid = drafts.some((d) => !isValidEmail(d.to));
 
   async function sendOne(draft: OutreachDraft, trackSending = true) {
-    if (!clerkUserId) return false;
+    if (!clerkUserId || sentIds.has(draft.campaignId)) return false;
     if (trackSending) setSendingId(draft.campaignId);
     setErrors((prev) => {
       const next = { ...prev };
@@ -649,6 +649,7 @@ function EmailDraftsCard({
         body: draft.body,
         campaignId: draft.campaignId,
         companyId: draft.companyId,
+        contactId: draft.contactId,
       });
       setSentIds((prev) => new Set(prev).add(draft.campaignId));
       return true;

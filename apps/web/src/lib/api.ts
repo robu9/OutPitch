@@ -36,6 +36,7 @@ export interface OutreachDraft {
   contactName?: string;
   companyName?: string;
   companyId?: string;
+  contactId?: string;
 }
 
 export async function streamChat(
@@ -147,11 +148,15 @@ export function sendOutreachEmail(
     body: string;
     campaignId?: string;
     companyId?: string;
+    contactId?: string;
   }
 ) {
-  return apiFetch<{ success: boolean; campaignId: string }>("/api/outreach/send", {
-    method: "POST",
-    clerkUserId,
-    body: JSON.stringify(payload),
-  });
+  return apiFetch<{ success: boolean; campaignId: string; alreadySent?: boolean }>(
+    "/api/outreach/send",
+    {
+      method: "POST",
+      clerkUserId,
+      body: JSON.stringify(payload),
+    }
+  );
 }

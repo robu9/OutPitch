@@ -13,7 +13,7 @@ import {
   userDataset,
   recallUserAndCompany,
 } from "../services/cognee.js";
-import { sendEmail, fetchEmails } from "../services/composio.js";
+import { fetchEmails } from "../services/composio.js";
 import { getLinkedInProfileFromClerkWithRetry } from "../services/linkedin-sync.js";
 import { normalizeLinkedInProfileFields } from "../services/linkedin-profile.js";
 import { buildLinkedInProfileSummary } from "../services/linkedin-profile.js";
@@ -24,6 +24,7 @@ import {
   buildSenderProfileSummary,
   draftOutreachEmail,
 } from "../services/email-drafter.js";
+import { sendOutreachCampaign } from "../services/outreach-send.js";
 
 const SYSTEM_PROMPT = `You are Outpitch, an AI job search assistant. You help users find companies, discover founder and recruiter contacts, draft personalized outreach emails, and track their job search progress.
 
@@ -195,6 +196,8 @@ const tools: FunctionDeclaration[] = [
         subject: { type: SchemaType.STRING },
         body: { type: SchemaType.STRING },
         campaignId: { type: SchemaType.STRING },
+        companyId: { type: SchemaType.STRING },
+        contactId: { type: SchemaType.STRING },
       },
       required: ["to", "subject", "body"],
     },
@@ -290,6 +293,7 @@ export interface EmailDraftPayload {
   contactName?: string;
   companyName?: string;
   companyId?: string;
+  contactId?: string;
 }
 
 export interface AgentContext {
@@ -490,6 +494,7 @@ async function executeTool(
         contactName,
         companyName: args.companyName as string,
         companyId,
+        contactId: contact?.id,
       };
       ctx.onEmailDrafted?.(payload);
 
@@ -497,30 +502,21 @@ async function executeTool(
     }
 
     case "sendEmail": {
-      const result = await sendEmail(ctx.clerkId, {
-        to: args.to as string,
-        subject: args.subject as string,
-        body: args.body as string,
-      });
-
-      const companyId = args.companyId as string | undefined;
-      const campaign = await prisma.outreachCampaign.create({
-        data: {
-          user: { connect: { id: ctx.userId } },
-          ...(companyId ? { company: { connect: { id: companyId } } } : {}),
+      const result = await sendOutreachCampaign(
+        ctx.userId,
+        ctx.clerkId,
+        {
+          to: args.to as string,
           subject: args.subject as string,
           body: args.body as string,
-          status: "sent",
-          sentAt: new Date(),
+          campaignId: args.campaignId as string | undefined,
+          companyId: args.companyId as string | undefined,
+          contactId: args.contactId as string | undefined,
         },
-      });
-
-      await remember(
-        `Sent email to ${args.to}: "${args.subject}"`,
-        { dataset: userDataset(ctx.clerkId), token: ctx.cogneeToken }
+        { cogneeToken: ctx.cogneeToken }
       );
 
-      return JSON.stringify({ success: true, campaignId: campaign.id, result });
+      return JSON.stringify(result);
     }
 
     case "remember":
