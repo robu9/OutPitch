@@ -12,6 +12,17 @@ import { ArrowRight, CheckCircle2, Linkedin, Mail } from "lucide-react";
 
 const steps = ["Connect", "Profile", "Launch"];
 
+function hasClerkLinkedInAccount(
+  externalAccounts: Array<{ provider: string }> | undefined
+): boolean {
+  return (
+    externalAccounts?.some((account) => {
+      const provider = account.provider.toLowerCase();
+      return provider.includes("linkedin");
+    }) ?? false
+  );
+}
+
 export default function OnboardingPage() {
   const { user } = useUser();
   const router = useRouter();
@@ -19,8 +30,8 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
+  const linkedinConnected = hasClerkLinkedInAccount(user?.externalAccounts);
   const [form, setForm] = useState({
     targetRole: "",
     targetLocation: "",
@@ -31,44 +42,19 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!user) return;
     apiFetch<{
-      linkedinConnected: boolean;
       gmailConnected: boolean;
       onboardingDone: boolean;
     }>("/api/onboarding/status", { clerkUserId: user.id })
       .then((status) => {
-        // Returning users who already finished onboarding skip the wizard.
-        // Keep `checking` true so the loader stays through the redirect (no flash).
         if (status.onboardingDone) {
           router.replace("/chat");
           return;
         }
-        setLinkedinConnected(status.linkedinConnected);
         setGmailConnected(status.gmailConnected);
         setChecking(false);
       })
       .catch(() => setChecking(false));
   }, [user, router]);
-
-  async function connectLinkedIn() {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { url } = await apiFetch<{ url: string }>(
-        "/api/onboarding/connect/linkedin",
-        { clerkUserId: user.id }
-      );
-      if (!url) {
-        setError("No OAuth URL returned.");
-        return;
-      }
-      window.location.href = url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect LinkedIn");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function connectGmail() {
     if (!user) return;
@@ -113,8 +99,6 @@ export default function OnboardingPage() {
     }
   }
 
-  // Show a loader (not the wizard) until we know whether the user is onboarded,
-  // so returning users never see a flash of the onboarding page before redirect.
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-base">
@@ -159,7 +143,7 @@ export default function OnboardingPage() {
         </h1>
         <p className="mt-2 text-sm text-text-secondary text-pretty">
           {step === 1 &&
-            "Link LinkedIn and Gmail to power discovery and outreach."}
+            "Your LinkedIn profile is imported from sign-in. Connect Gmail to send outreach."}
           {step === 2 &&
             "We'll store this in Cognee so Outpitch remembers your preferences."}
           {step === 3 &&
@@ -177,14 +161,11 @@ export default function OnboardingPage() {
 
         {step === 1 && (
           <div className="mt-8 space-y-3">
-            <button
-              type="button"
-              onClick={connectLinkedIn}
-              disabled={loading}
-              className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors ${
+            <div
+              className={`flex w-full items-center justify-between rounded-xl border p-4 ${
                 linkedinConnected
                   ? "border-foreground bg-bg-elevated"
-                  : "border-border bg-bg-elevated hover:border-border-strong"
+                  : "border-border bg-bg-elevated"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -192,14 +173,16 @@ export default function OnboardingPage() {
                 <div>
                   <p className="text-sm font-medium text-foreground">LinkedIn</p>
                   <p className="text-xs text-text-secondary">
-                    {linkedinConnected ? "Connected" : "Import your experience"}
+                    {linkedinConnected
+                      ? "Connected via sign-in — profile syncs automatically"
+                      : "Sign out and sign in with LinkedIn to import your profile"}
                   </p>
                 </div>
               </div>
               {linkedinConnected && (
                 <CheckCircle2 className="h-5 w-5 text-foreground" aria-hidden />
               )}
-            </button>
+            </div>
 
             <button
               type="button"

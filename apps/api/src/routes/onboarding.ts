@@ -4,13 +4,13 @@ import { prisma } from "@outpitch/db";
 import { asyncHandler, AppError } from "../middleware/error.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
-  getLinkedInProfileWithRetry,
   getGmailAuthUrl,
-  getLinkedInAuthUrl,
   checkConnectionStatus,
   disconnectToolkit,
   getGmailAddress,
 } from "../services/composio.js";
+import { hasClerkLinkedInAccount } from "../services/clerk-linkedin.js";
+import { getLinkedInProfileFromClerkWithRetry } from "../services/linkedin-sync.js";
 import { ingestUserProfile } from "../services/cognee.js";
 import {
   normalizeLinkedInProfileFields,
@@ -22,21 +22,18 @@ const router = Router();
 const linkedInSyncInFlight = new Set<string>();
 
 export async function syncLinkedInForUser(userId: string, clerkId: string) {
-  let profile;
-  try {
-    profile = await getLinkedInProfileWithRetry(clerkId);
-  } catch (error) {
-    if (error instanceof AppError && error.code === "LINKEDIN_TOKEN_EXPIRED") {
-      throw new AppError(
-        401,
-        "Your LinkedIn session has expired. Please reconnect LinkedIn in Settings to refresh access.",
-        "LINKEDIN_TOKEN_EXPIRED"
-      );
-    }
-    throw error;
+  const linkedInViaClerk = await hasClerkLinkedInAccount(clerkId);
+  if (!linkedInViaClerk) {
+    throw new AppError(
+      400,
+      "Sign in with LinkedIn to import your profile.",
+      "LINKEDIN_NOT_CONNECTED"
+    );
   }
+
+  const profile = await getLinkedInProfileFromClerkWithRetry(clerkId);
   if (!profile) {
-    throw new AppError(400, "LinkedIn not connected", "LINKEDIN_NOT_CONNECTED");
+    throw new AppError(400, "LinkedIn profile sync failed", "LINKEDIN_SYNC_FAILED");
   }
 
   const fields = normalizeLinkedInProfileFields(profile);
@@ -82,7 +79,7 @@ async function ensureLinkedInSynced(userId: string, clerkId: string, linkedinCon
   });
 
   const existing = user?.profile?.linkedinData as Record<string, unknown> | undefined;
-  if (existing && profileHasLinkedInData(existing) && existing.personProfile) {
+  if (existing && profileHasLinkedInData(existing) && (existing.scraped || existing.personProfile)) {
     return false;
   }
 
@@ -111,13 +108,10 @@ router.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const connections = await checkConnectionStatus(req.auth!.clerkId);
+    const linkedinConnected = await hasClerkLinkedInAccount(req.auth!.clerkId);
 
-    const synced = connections.linkedinHealthy
-      ? await ensureLinkedInSynced(
-          req.auth!.userId,
-          req.auth!.clerkId,
-          connections.linkedin
-        )
+    const synced = linkedinConnected
+      ? await ensureLinkedInSynced(req.auth!.userId, req.auth!.clerkId, linkedinConnected)
       : false;
 
     if (connections.gmail) {
@@ -133,8 +127,7 @@ router.get(
 
     res.json({
       onboardingDone: user?.onboardingDone ?? false,
-      linkedinConnected: connections.linkedin,
-      linkedinTokenExpired: connections.linkedin && !connections.linkedinHealthy,
+      linkedinConnected,
       gmailConnected: connections.gmail,
       linkedinProfileSynced: Boolean(user?.profile?.linkedinData),
       linkedinSyncing: linkedInSyncInFlight.has(req.auth!.clerkId),
@@ -161,40 +154,11 @@ router.get(
 );
 
 router.get(
-  "/connect/linkedin",
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const url = await getLinkedInAuthUrl(req.auth!.clerkId);
-    res.json({ url });
-  })
-);
-
-router.get(
   "/connect/gmail",
   requireAuth,
   asyncHandler(async (req, res) => {
     const url = await getGmailAuthUrl(req.auth!.clerkId);
     res.json({ url });
-  })
-);
-
-router.post(
-  "/disconnect/linkedin",
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    await disconnectToolkit(req.auth!.clerkId, "linkedin");
-
-    await prisma.user.update({
-      where: { id: req.auth!.userId },
-      data: { linkedinConnected: false },
-    });
-
-    await prisma.userProfile.updateMany({
-      where: { userId: req.auth!.userId },
-      data: { linkedinData: undefined },
-    });
-
-    res.json({ success: true, linkedinConnected: false });
   })
 );
 
@@ -247,17 +211,18 @@ router.post(
     });
 
     const connections = await checkConnectionStatus(req.auth!.clerkId);
+    const linkedinConnected = await hasClerkLinkedInAccount(req.auth!.clerkId);
 
     await prisma.user.update({
       where: { id: req.auth!.userId },
       data: {
         onboardingDone: true,
         gmailConnected: connections.gmail,
-        linkedinConnected: connections.linkedin,
+        linkedinConnected,
       },
     });
 
-    if (connections.linkedin) {
+    if (linkedinConnected) {
       await syncLinkedInForUser(req.auth!.userId, req.auth!.clerkId).catch((error) => {
         console.warn("LinkedIn auto-sync after onboarding failed:", error);
       });

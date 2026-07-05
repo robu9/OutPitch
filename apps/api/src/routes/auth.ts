@@ -5,6 +5,7 @@ import { config } from "../config.js";
 import { asyncHandler } from "../middleware/error.js";
 import { getOrCreateUser } from "../middleware/auth.js";
 import { provisionCogneeUser } from "../services/cognee.js";
+import { hasClerkLinkedInAccount } from "../services/clerk-linkedin.js";
 
 const router = Router();
 
@@ -30,6 +31,13 @@ router.post(
       const name = [data.first_name, data.last_name].filter(Boolean).join(" ") || undefined;
 
       const user = await getOrCreateUser(clerkId, { email, name });
+      const linkedinConnected = await hasClerkLinkedInAccount(clerkId);
+      if (linkedinConnected) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { linkedinConnected: true },
+        });
+      }
 
       if (!user.cogneeToken) {
         const cogneeUser = await provisionCogneeUser(clerkId, email);

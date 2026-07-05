@@ -48,7 +48,10 @@ export function buildLinkedInProfileSummary(profile: Record<string, unknown>): s
     pickLocalized(person.localizedHeadline) ??
     pickLocalized(person.headline);
 
-  const vanity = (person.vanityName as string | undefined) ?? (myInfo.vanityName as string | undefined);
+  const vanity =
+    (person.vanityName as string | undefined) ??
+    (myInfo.vanityName as string | undefined) ??
+    (profile.vanityName as string | undefined);
   const linkedinUrl = vanity ? `https://www.linkedin.com/in/${vanity}` : undefined;
 
   const sections: string[] = [];
@@ -153,7 +156,10 @@ export function normalizeLinkedInProfileFields(profile: Record<string, unknown>)
     pickLocalized(person.localizedLastName) ??
     pickLocalized(person.lastName);
 
-  const vanity = (person.vanityName as string | undefined) ?? (myInfo.vanityName as string | undefined);
+  const vanity =
+    (person.vanityName as string | undefined) ??
+    (myInfo.vanityName as string | undefined) ??
+    (profile.vanityName as string | undefined);
 
   return {
     name: [firstName, lastName].filter(Boolean).join(" ").trim() || undefined,

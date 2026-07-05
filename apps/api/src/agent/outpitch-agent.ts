@@ -13,7 +13,9 @@ import {
   userDataset,
   recallUserAndCompany,
 } from "../services/cognee.js";
-import { sendEmail, fetchEmails, getLinkedInProfileWithRetry } from "../services/composio.js";
+import { sendEmail, fetchEmails } from "../services/composio.js";
+import { getLinkedInProfileFromClerkWithRetry } from "../services/linkedin-sync.js";
+import { normalizeLinkedInProfileFields } from "../services/linkedin-profile.js";
 import { buildLinkedInProfileSummary } from "../services/linkedin-profile.js";
 import { enqueueCompanyPipeline, getPipelineStatus } from "../jobs/company-pipeline.js";
 import { ingestUserProfile } from "../services/cognee.js";
@@ -25,7 +27,7 @@ import {
 
 const SYSTEM_PROMPT = `You are Outpitch, an AI job search assistant. You help users find companies, discover founder and recruiter contacts, draft personalized outreach emails, and track their job search progress.
 
-You receive the user's LinkedIn profile snapshot on every message (from Composio). For everything else, use Cognee memory tools dynamically — do not guess what is stored.
+You receive the user's LinkedIn profile snapshot on every message (from their Clerk LinkedIn sign-in). For everything else, use Cognee memory tools dynamically — do not guess what is stored.
 
 Cognee memory tools (call only when needed):
 - recall(query): Search permanent memory for relevant facts before answering questions about preferences, past searches, outreach, or anything not in the profile snapshot
@@ -548,15 +550,18 @@ async function executeTool(
     }
 
     case "resyncLinkedIn": {
-      const freshProfile = await getLinkedInProfileWithRetry(ctx.clerkId);
+      const freshProfile = await getLinkedInProfileFromClerkWithRetry(ctx.clerkId);
       if (!freshProfile) {
         return JSON.stringify({ error: "LinkedIn not connected or sync failed" });
       }
 
+      const fields = normalizeLinkedInProfileFields(freshProfile);
+
       await prisma.userProfile.updateMany({
         where: { userId: ctx.userId },
         data: {
-          headline: (freshProfile.localizedHeadline as string) ?? undefined,
+          headline: fields.headline,
+          summary: fields.summary,
           linkedinData: freshProfile as object,
         },
       });

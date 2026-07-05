@@ -1,6 +1,13 @@
 import { SignIn } from "@clerk/nextjs";
 import { Logo } from "@/components/logo";
 
+const clerkAppearance = {
+  layout: {
+    socialButtonsPlacement: "top" as const,
+    socialButtonsVariant: "blockButton" as const,
+  },
+};
+
 export default function SignInPage() {
   return (
     <div className="min-h-screen bg-bg-base">
@@ -14,7 +21,7 @@ export default function SignInPage() {
               Welcome back
             </h1>
             <p className="mt-1.5 text-sm text-text-secondary">
-              Sign in to continue your job search
+              Continue with LinkedIn to sign in and sync your profile
             </p>
           </div>
           <SignIn
@@ -22,6 +29,7 @@ export default function SignInPage() {
             path="/sign-in"
             signUpUrl="/sign-up"
             forceRedirectUrl="/chat"
+            appearance={clerkAppearance}
           />
         </div>
       </div>

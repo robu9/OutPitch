@@ -17,13 +17,11 @@ import {
   Mail,
   MessageCircle,
   RefreshCw,
-  Unplug,
   XCircle,
 } from "lucide-react";
 
 type ConnectionStatus = {
   linkedinConnected: boolean;
-  linkedinTokenExpired?: boolean;
   gmailConnected: boolean;
   linkedinProfileSynced?: boolean;
   linkedinSyncing?: boolean;
@@ -31,6 +29,17 @@ type ConnectionStatus = {
   whatsappVerified?: boolean;
   onboardingDone: boolean;
 };
+
+function hasClerkLinkedInAccount(
+  externalAccounts: Array<{ provider: string }> | undefined
+): boolean {
+  return (
+    externalAccounts?.some((account) => {
+      const provider = account.provider.toLowerCase();
+      return provider.includes("linkedin");
+    }) ?? false
+  );
+}
 
 export default function SettingsPage() {
   const { user } = useUser();
@@ -46,6 +55,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [whatsappInput, setWhatsappInput] = useState("");
   const [whatsappCode, setWhatsappCode] = useState<string | null>(null);
+  const linkedinViaClerk = hasClerkLinkedInAccount(user?.externalAccounts);
 
   const loadStatus = useCallback(async () => {
     if (!user) return null;
@@ -81,68 +91,21 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!user || oauthHandled.current) return;
-    // Composio returns to /settings?connect=<toolkit> after OAuth (no status param).
     const connect = searchParams.get("connect");
-    if (connect !== "linkedin" && connect !== "gmail") return;
+    if (connect !== "gmail") return;
     oauthHandled.current = true;
 
     const oauthStatus = searchParams.get("status");
     const failed = oauthStatus === "failed";
-    // Always clean the query param out of the URL.
     router.replace("/settings");
 
     if (failed) {
-      setError(`${connect === "gmail" ? "Gmail" : "LinkedIn"} connection was cancelled or failed.`);
+      setError("Gmail connection was cancelled or failed.");
       return;
     }
 
-    // On a successful LinkedIn connect, kick off the profile sync.
-    if (connect === "linkedin") {
-      syncLinkedIn().catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to sync LinkedIn profile");
-      });
-    } else {
-      loadStatus().catch(() => {});
-    }
-  }, [user, searchParams, router, syncLinkedIn, loadStatus]);
-
-  async function connectLinkedIn() {
-    if (!user) return;
-    setLoading("linkedin-connect");
-    setError(null);
-    try {
-      const { url } = await apiFetch<{ url: string }>(
-        "/api/onboarding/connect/linkedin",
-        { clerkUserId: user.id }
-      );
-      if (!url) {
-        setError("No OAuth URL returned.");
-        return;
-      }
-      window.location.href = url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect LinkedIn");
-    } finally {
-      setLoading(null);
-    }
-  }
-
-  async function disconnectLinkedIn() {
-    if (!user) return;
-    setLoading("linkedin-disconnect");
-    setError(null);
-    try {
-      await apiFetch("/api/onboarding/disconnect/linkedin", {
-        method: "POST",
-        clerkUserId: user.id,
-      });
-      await loadStatus();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disconnect LinkedIn");
-    } finally {
-      setLoading(null);
-    }
-  }
+    loadStatus().catch(() => {});
+  }, [user, searchParams, router, loadStatus]);
 
   async function connectGmail() {
     if (!user) return;
@@ -201,6 +164,7 @@ export default function SettingsPage() {
     }
   }
 
+  const linkedinConnected = linkedinViaClerk || status.linkedinConnected;
   const linkedinSyncing = loading === "linkedin-sync" || status.linkedinSyncing;
 
   return (
@@ -225,7 +189,7 @@ export default function SettingsPage() {
           <section>
             <h2 className="text-sm font-medium text-foreground">Connections</h2>
             <p className="mt-1 text-sm text-text-secondary">
-              Link accounts to power discovery and outreach.
+              LinkedIn is linked through your sign-in. Connect Gmail for outreach.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -235,15 +199,15 @@ export default function SettingsPage() {
                 description={
                   linkedinSyncing
                     ? "Syncing your profile..."
-                    : status.linkedinConnected
+                    : linkedinConnected
                       ? status.linkedinProfileSynced
-                        ? "Connected and synced to memory"
-                        : "Connected — sync your profile"
-                      : "Import career history for better matching"
+                        ? "Connected via sign-in and synced to memory"
+                        : "Connected via sign-in — sync your profile"
+                      : "Sign in with LinkedIn to import your career history"
                 }
-                connected={status.linkedinConnected && !status.linkedinTokenExpired}
+                connected={linkedinConnected}
                 badge={
-                  status.linkedinConnected
+                  linkedinConnected
                     ? linkedinSyncing
                       ? "Syncing"
                       : status.linkedinProfileSynced
@@ -252,39 +216,21 @@ export default function SettingsPage() {
                     : undefined
                 }
                 actions={
-                  status.linkedinConnected ? (
-                    <div className="flex gap-2">
-                      {!status.linkedinTokenExpired && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={syncLinkedIn}
-                          disabled={loading !== null}
-                        >
-                          {loading === "linkedin-sync" ? (
-                            <Spinner />
-                          ) : (
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          )}
-                          Sync
-                        </Button>
+                  linkedinConnected ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={syncLinkedIn}
+                      disabled={loading !== null}
+                    >
+                      {loading === "linkedin-sync" ? (
+                        <Spinner />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
                       )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={disconnectLinkedIn}
-                        disabled={loading !== null}
-                      >
-                        <Unplug className="h-3.5 w-3.5" />
-                        Disconnect
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button size="sm" onClick={connectLinkedIn} disabled={loading !== null}>
-                      {loading === "linkedin-connect" && <Spinner className="h-3.5 w-3.5 text-[var(--btn-primary-fg)]" />}
-                      Connect
+                      Sync
                     </Button>
-                  )
+                  ) : undefined
                 }
               />
 
@@ -403,7 +349,7 @@ function ConnectionRow({
   description: string;
   connected: boolean;
   badge?: string;
-  actions: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-bg-elevated p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -423,7 +369,7 @@ function ConnectionRow({
           <p className="mt-1 text-sm text-text-secondary text-pretty">{description}</p>
         </div>
       </div>
-      <div className="shrink-0">{actions}</div>
+      {actions ? <div className="shrink-0">{actions}</div> : null}
     </div>
   );
 }

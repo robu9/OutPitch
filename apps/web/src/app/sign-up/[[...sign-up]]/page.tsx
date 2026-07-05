@@ -1,6 +1,13 @@
 import { SignUp } from "@clerk/nextjs";
 import { Logo } from "@/components/logo";
 
+const clerkAppearance = {
+  layout: {
+    socialButtonsPlacement: "top" as const,
+    socialButtonsVariant: "blockButton" as const,
+  },
+};
+
 export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-bg-base">
@@ -14,7 +21,7 @@ export default function SignUpPage() {
               Create your account
             </h1>
             <p className="mt-1.5 text-sm text-text-secondary">
-              Start finding companies and sending outreach with memory
+              Continue with LinkedIn to import your experience and start outreach
             </p>
           </div>
           <SignUp
@@ -22,6 +29,7 @@ export default function SignUpPage() {
             path="/sign-up"
             signInUrl="/sign-in"
             forceRedirectUrl="/onboarding"
+            appearance={clerkAppearance}
           />
         </div>
       </div>

@@ -48,6 +48,14 @@ export function AppShell({
         if (!s.onboardingDone) router.replace("/onboarding");
       })
       .catch(() => {});
+
+    const signedInWithLinkedIn = user.externalAccounts?.some((account) =>
+      account.provider.toLowerCase().includes("linkedin")
+    );
+    if (signedInWithLinkedIn) {
+      // Kick off Clerk → Apify profile sync in the background after login.
+      apiFetch("/api/onboarding/status", { clerkUserId: user.id }).catch(() => {});
+    }
   }, [user, router]);
 
   useGSAP(

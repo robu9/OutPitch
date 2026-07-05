@@ -34,7 +34,7 @@ function validateConfig() {
   }
 
   if (!config.composioApiKey) {
-    console.warn("Warning: COMPOSIO_API_KEY is not set — LinkedIn/Gmail connect will fail");
+    console.warn("Warning: COMPOSIO_API_KEY is not set — Gmail connect will fail");
   }
 
   if (!config.apifyApiToken) {
