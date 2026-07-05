@@ -197,7 +197,8 @@ Website context: ${companyContext.slice(0, 2000)}
 
 Rules:
 - Score 0 if this is a recruitment agency, staffing firm, job board, career site aggregator, or company that helps others hire (not an actual employer).
-- Score higher when the company likely employs people in the search role and matches user skills, industries, location, and memory preferences.
+- Active job postings are not required — score companies that operate in the user's target field and could plausibly employ people in the search role.
+- Score higher when the company matches user skills, industries, location, and memory preferences.
 - Score lower for bad past feedback patterns in user memory.
 - Return JSON only: {"score": number 0-100, "reason": "one short sentence"}`;
 

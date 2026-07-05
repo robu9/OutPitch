@@ -128,7 +128,7 @@ async function processPipeline(job: Job<PipelineJobData>) {
 
     const userContext = await buildUserMatchContext(userId, clerkId, cogneeToken);
 
-    await updateJob(jobId, { status: "searching", progress: 10, message: "Searching employers..." });
+    await updateJob(jobId, { status: "searching", progress: 10, message: "Searching companies in your field..." });
 
     const rawCompanies = await searchCompanies(params);
     const companies = rawCompanies.filter((c) => !isRecruitmentOrJobBoard(c));
@@ -137,7 +137,7 @@ async function processPipeline(job: Job<PipelineJobData>) {
       await updateJob(jobId, {
         status: "completed",
         progress: 100,
-        message: "No matching employers found — try broadening role or location",
+        message: "No matching companies found — try broadening role, industry, or location",
         result: [],
       });
       return [];

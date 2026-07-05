@@ -36,7 +36,7 @@ interface Message {
 }
 
 const suggestions = [
-  "Find Series A–C startups hiring frontend engineers",
+  "Find Series A–C fintech startups in NYC for frontend outreach",
   "Show my company pipeline ranked by fit",
   "Draft outreach to a VP of Engineering at Retool",
   "What does Cognee remember about my preferences?",

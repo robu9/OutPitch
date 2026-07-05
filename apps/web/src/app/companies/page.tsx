@@ -92,7 +92,7 @@ export default function CompaniesPage() {
             <EmptyState
               icon={Building2}
               title="No companies yet"
-              description="Start a conversation in chat to discover companies hiring for your role."
+              description="Start a conversation in chat to discover companies in your target field."
               action={
                 <Link href="/chat">
                   <Button>

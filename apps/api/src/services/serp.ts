@@ -86,18 +86,29 @@ const BLOCKED_SEARCH_DOMAINS = [
 // (quoted phrases, OR, site:, -exclusions) with a 400 "Query pattern not allowed for
 // free accounts". Recruitment/job-board results are removed later by BLOCKED_SEARCH_DOMAINS
 // and isRecruitmentOrJobBoard, so we don't need in-query exclusions.
-function buildEmployerSearchQueries(params: CompanySearchParams): string[] {
+//
+// Cold outreach targets companies in the field — they do not need active job postings.
+// Avoid "careers", "jobs", and "hiring" phrasing so results skew toward real employers.
+function buildCompanySearchQueries(params: CompanySearchParams): string[] {
   const role = params.role;
   const location = params.location ?? "";
   const industry = params.industry ?? "";
+  const companySize = params.companySize ?? "";
   const keywords = (params.keywords ?? []).join(" ");
   const clean = (q: string) => q.replace(/\s+/g, " ").trim();
 
-  return [
-    clean(`${role} careers ${location} ${industry} ${keywords}`),
-    clean(`${role} we are hiring ${industry} ${location}`),
-    clean(`${role} jobs at startups ${industry} ${location} ${keywords}`),
-  ];
+  const queries: string[] = [];
+
+  if (industry) {
+    queries.push(clean(`${industry} company ${location} ${companySize} ${keywords}`));
+    queries.push(clean(`${industry} startup ${location} ${keywords}`));
+    queries.push(clean(`${role} ${industry} company ${location}`));
+  } else {
+    queries.push(clean(`${role} company ${location} ${companySize} ${keywords}`));
+    queries.push(clean(`${role} startup ${location} ${keywords}`));
+  }
+
+  return queries;
 }
 
 export async function searchCompaniesWithPerplexity(params: CompanySearchParams): Promise<Array<{
@@ -111,7 +122,7 @@ export async function searchCompaniesWithPerplexity(params: CompanySearchParams)
     return [];
   }
 
-  const prompt = `You are an expert company discovery agent. Find and recommend real, existing companies that are actively hiring or likely employers for the following role and preferences. Use your web search capabilities to find accurate, up-to-date, and active job postings or hiring companies.
+  const prompt = `You are an expert company discovery agent. Find and recommend real, existing companies that operate in the user's target field and could plausibly employ people in the search role. Active job postings are not required — cold outreach targets real employers in the space. Use your web search capabilities to find accurate, up-to-date companies.
 
 Role: ${params.role}
 Location: ${params.location ?? "Any"}
@@ -123,7 +134,7 @@ Rules:
 - Recommend ONLY real, actual companies with valid, operational domains (e.g. "stripe.com", "vercel.com").
 - Avoid generic placeholders or fake websites.
 - Provide a concise description of what they do and why they match.
-- For each company, provide a valid "sourceUrl" (like their careers page or main domain, e.g. "https://stripe.com/careers" or "https://stripe.com").
+- For each company, provide a valid "sourceUrl" (their main domain or about page, e.g. "https://stripe.com" or "https://stripe.com/about").
 - NEVER recommend recruitment agencies, staffing firms, or job boards (e.g. indeed, glassdoor, linkedin, upwork).
 - Return a JSON object with a single "companies" key containing an array of up to ${params.limit || 10} companies:
 {
@@ -183,7 +194,7 @@ Rules:
 
 export async function searchCompanies(params: CompanySearchParams) {
   const fetchLimit = Math.min(params.limit * 3, 30);
-  const queries = buildEmployerSearchQueries(params);
+  const queries = buildCompanySearchQueries(params);
 
   const companies: Array<{
     name: string;

@@ -40,6 +40,7 @@ Response style (important):
 
 Company discovery (critical — follow every time):
 - When the user asks to search, find, or discover companies (or search/find "more" companies), you MUST call the searchCompanies tool to run a live search. Do NOT simply list previously matched companies found via recall from memory.
+- Find companies that operate in the user's target field — they do not need to be actively hiring. Cold outreach works by reaching real employers in the space.
 - NEVER call searchCompanies on the first vague request. Gather context first with short questions, one at a time.
 - Before searchCompanies, call recall to check stored preferences. Use the profile snapshot too.
 - Required before search: target role, location or remote preference, industry or company type, and at least basic company preferences (startup vs enterprise, must-haves, or deal-breakers).
@@ -115,7 +116,7 @@ const tools: FunctionDeclaration[] = [
   {
     name: "searchCompanies",
     description:
-      "Start company discovery after gathering context (role, location, industry, preferences). Blocked automatically if context is incomplete — ask the returned nextQuestion first.",
+      "Start company discovery after gathering context (role, location, industry, preferences). Finds companies in the target field — active hiring is not required. Blocked automatically if context is incomplete — ask the returned nextQuestion first.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
