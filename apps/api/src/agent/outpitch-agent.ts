@@ -4,7 +4,7 @@ import {
   SchemaType,
 } from "@google/generative-ai";
 import { config } from "../config.js";
-import { prisma } from "@outpitch/db";
+import { prisma, type Prisma } from "@outpitch/db";
 import type { CompanySearchParams } from "@outpitch/types";
 import {
   remember,
@@ -18,6 +18,10 @@ import { buildLinkedInProfileSummary } from "../services/linkedin-profile.js";
 import { enqueueCompanyPipeline, getPipelineStatus } from "../jobs/company-pipeline.js";
 import { ingestUserProfile } from "../services/cognee.js";
 import { assessSearchReadiness, toSearchParams } from "../services/search-context.js";
+import {
+  buildSenderProfileSummary,
+  draftOutreachEmail,
+} from "../services/email-drafter.js";
 
 const SYSTEM_PROMPT = `You are Outpitch, an AI job search assistant. You help users find companies, discover founder and recruiter contacts, draft personalized outreach emails, and track their job search progress.
 
@@ -44,12 +48,18 @@ Company discovery (critical — follow every time):
 - Summarize what you understood in one sentence before starting the search.
 - Write plain text ONLY. Never use markdown: no asterisks (* or **), no #, no bullet points, no bold/italic markers. This output is shown in web chat and WhatsApp, where markdown renders as broken characters.
 
+Post-search outreach (critical):
+- After searchCompanies starts, tell the user results are loading in the background.
+- When search results are ready (user sees companies or says yes to outreach), ask exactly once: "Want me to draft outreach emails for the top matches?"
+- Do not draft or send emails until the user explicitly says yes.
+- If they say yes, call getSearchResults (with the jobId if you have it), then draftEmail for the best contact at each top company (up to 3). Show each draft and confirm before sendEmail.
+
 Guidelines:
 - If the user asks about stored context and the profile snapshot is insufficient, call recall first
 - Never claim you lack LinkedIn profile data when it is present in context
 - LinkedIn posts/activity are not ingested — only basic profile fields. Say so honestly if asked about posts
 - Be proactive about suggesting companies and contacts
-- Draft concise, personalized cold emails (under 150 words)
+- For outreach, call draftEmail to generate the email body (Gemini writes it). Show the draft and ask for confirmation before sendEmail.
 - Never send emails without explicit user confirmation`;
 
 /**
@@ -120,6 +130,17 @@ const tools: FunctionDeclaration[] = [
         limit: { type: SchemaType.NUMBER, description: "Max companies (1-20)" },
       },
       required: ["role"],
+    },
+  },
+  {
+    name: "getSearchResults",
+    description:
+      "Get results from a completed company search. Use when the user wants to review matches or proceed with outreach after search.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        jobId: { type: SchemaType.STRING, description: "Pipeline job ID from searchCompanies" },
+      },
     },
   },
   {
@@ -304,6 +325,55 @@ async function executeTool(
         jobId: job.id,
         status: "queued",
         searchContext: readiness.contextSummary,
+        postSearchHint:
+          "Tell the user search is running and results will appear shortly. When results are ready, ask: Want me to draft outreach emails for the top matches? Do not draft or send until they confirm.",
+      });
+    }
+
+    case "getSearchResults": {
+      const jobId = args.jobId as string | undefined;
+      let status = jobId ? await getPipelineStatus(jobId, ctx.userId) : null;
+
+      if (!status) {
+        const latest = await prisma.pipelineJob.findFirst({
+          where: { userId: ctx.userId, status: "completed" },
+          orderBy: { updatedAt: "desc" },
+        });
+        if (latest) status = await getPipelineStatus(latest.id, ctx.userId);
+      }
+
+      if (!status) {
+        return JSON.stringify({ error: "No search results found", status: "not_found" });
+      }
+
+      if (status.status !== "completed") {
+        return JSON.stringify({
+          jobId: status.jobId,
+          status: status.status,
+          progress: status.progress,
+          message: status.message,
+          hint: "Search still running. Tell the user to wait, then ask about outreach when complete.",
+        });
+      }
+
+      const companies = (status.companies ?? []) as Array<{
+        id: string;
+        name: string;
+        domain: string;
+        matchScore: number;
+        contacts?: Array<{ name: string; title?: string; email?: string }>;
+      }>;
+
+      return JSON.stringify({
+        jobId: status.jobId,
+        status: status.status,
+        message: status.message,
+        companies,
+        outreachPrompt: "Want me to draft outreach emails for the top matches?",
+        hint:
+          companies.length > 0
+            ? "Ask outreachPrompt if not already asked. If user said yes, draftEmail for top contacts (max 3 companies)."
+            : "No matches — suggest broadening search. Do not offer outreach.",
       });
     }
 
@@ -329,15 +399,66 @@ async function executeTool(
         where: { id: ctx.userId },
         include: { profile: true },
       });
-      const profile = user?.profile;
-      const draft = {
-        to: "[contact email]",
-        subject: `Interested in ${args.purpose} opportunities at ${args.companyName}`,
-        body: `Hi ${args.contactName},\n\nI'm ${user?.name ?? "a professional"} with experience in ${profile?.targetRole ?? "my field"}. ${profile?.summary ?? ""}\n\nI came across ${args.companyName} and was impressed by your work. I'd love to connect about ${args.purpose}.\n\nWould you have 15 minutes for a quick chat?\n\nBest regards,\n${user?.name ?? ""}`,
-        contactName: args.contactName,
+
+      const companyId = args.companyId as string | undefined;
+      const company = companyId
+        ? await prisma.company.findUnique({
+            where: { id: companyId },
+            include: { contacts: true },
+          })
+        : null;
+
+      const contactName = args.contactName as string;
+      const contact =
+        company?.contacts.find(
+          (c) => c.name.toLowerCase() === contactName.toLowerCase()
+        ) ??
+        company?.contacts.find((c) =>
+          c.name.toLowerCase().includes(contactName.toLowerCase())
+        ) ??
+        company?.contacts.find((c) => c.email);
+
+      const memory = companyId
+        ? await recallUserAndCompany(
+            ctx.clerkId,
+            companyId,
+            `Why is ${args.companyName} a fit? What should outreach mention?`,
+            ctx.cogneeToken
+          )
+        : [];
+
+      const draft = await draftOutreachEmail({
+        senderName: user?.name ?? "there",
+        senderProfile: buildSenderProfileSummary(user, user?.profile),
+        contactName,
+        contactTitle:
+          (args.contactTitle as string | undefined) ??
+          (contact?.title ? contact.title : undefined),
+        contactEmail: contact?.email ? contact.email : undefined,
+        companyName: (args.companyName as string) ?? company?.name ?? "the company",
+        companyDescription: company?.description ? company.description : undefined,
+        companyIndustry: company?.industry ? company.industry : undefined,
+        purpose: args.purpose as string,
+        memorySnippets: memory.map((m) => m.content),
+      });
+
+      const campaign = await prisma.outreachCampaign.create({
+        data: {
+          userId: ctx.userId,
+          companyId: companyId ?? null,
+          contactId: contact?.id ?? null,
+          subject: draft.subject,
+          body: draft.body,
+          status: "draft",
+        } as Prisma.OutreachCampaignUncheckedCreateInput,
+      });
+
+      return JSON.stringify({
+        ...draft,
+        campaignId: campaign.id,
+        contactName,
         companyName: args.companyName,
-      };
-      return JSON.stringify(draft);
+      });
     }
 
     case "sendEmail": {
@@ -355,7 +476,7 @@ async function executeTool(
           body: args.body as string,
           status: "sent",
           sentAt: new Date(),
-        },
+        } as Prisma.OutreachCampaignUncheckedCreateInput,
       });
 
       await remember(

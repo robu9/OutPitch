@@ -110,7 +110,10 @@ function formatWhatsAppResults(role: string, results: Array<{ name: string; doma
       : "";
     return header + contactLine;
   });
-  return `Found ${results.length} companies for "${role}":\n\n${lines.join("\n\n")}`;
+  return (
+    `Found ${results.length} companies for "${role}":\n\n${lines.join("\n\n")}\n\n` +
+    `Want me to draft outreach emails for the top matches? Reply yes to continue.`
+  );
 }
 
 async function processPipeline(job: Job<PipelineJobData>) {
@@ -366,7 +369,7 @@ async function processPipeline(job: Job<PipelineJobData>) {
       progress: 100,
       message:
         results.length > 0
-          ? `Found ${results.length} companies matched to your profile`
+          ? `Found ${results.length} companies matched to your profile. Want me to draft outreach emails for the top matches?`
           : "No strong matches — try updating your preferences in chat",
       result: results,
     });

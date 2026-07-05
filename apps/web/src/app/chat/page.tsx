@@ -145,12 +145,12 @@ export default function ChatPage() {
     }
   }
 
-  async function handleSend(e?: React.FormEvent) {
+  async function handleSend(e?: React.FormEvent, presetMessage?: string) {
     e?.preventDefault();
-    if (!input.trim() || !user || streaming) return;
+    const userMessage = (presetMessage ?? input).trim();
+    if (!userMessage || !user || streaming) return;
 
-    const userMessage = input.trim();
-    setInput("");
+    if (!presetMessage) setInput("");
     setStreaming(true);
 
     const userMsg: Message = {
@@ -338,7 +338,17 @@ export default function ChatPage() {
                         ) : null)}
                     </div>
                     {msg.role === "assistant" && msg.jobId && (
-                      <PipelineCard jobId={msg.jobId} clerkUserId={user?.id ?? null} />
+                      <PipelineCard
+                        jobId={msg.jobId}
+                        clerkUserId={user?.id ?? null}
+                        onDraftOutreach={(jobId) =>
+                          handleSend(
+                            undefined,
+                            `Yes — draft outreach emails for the top matches from my search (job ${jobId})`
+                          )
+                        }
+                        outreachDisabled={streaming}
+                      />
                     )}
                   </div>
                 ))}
@@ -388,9 +398,13 @@ const TERMINAL = new Set(["completed", "failed"]);
 function PipelineCard({
   jobId,
   clerkUserId,
+  onDraftOutreach,
+  outreachDisabled,
 }: {
   jobId: string;
   clerkUserId: string | null;
+  onDraftOutreach?: (jobId: string) => void;
+  outreachDisabled?: boolean;
 }) {
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -542,6 +556,25 @@ function PipelineCard({
             );
           })}
         </ul>
+      )}
+
+      {done && !failed && companies.length > 0 && onDraftOutreach && (
+        <div className="border-t border-border px-4 py-3">
+          <p className="text-xs text-text-secondary">
+            {status?.message?.includes("Want me to draft")
+              ? status.message
+              : "Want me to draft outreach emails for the top matches?"}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2"
+            disabled={outreachDisabled}
+            onClick={() => onDraftOutreach(jobId)}
+          >
+            Yes, draft emails
+          </Button>
+        </div>
       )}
     </div>
   );
