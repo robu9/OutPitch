@@ -63,17 +63,38 @@ function extractDomain(url: string): string | null {
   }
 }
 
-export async function searchCompanies(params: CompanySearchParams) {
-  const parts = [
-    params.role,
-    "companies hiring",
-    params.location,
-    params.industry,
-    ...(params.keywords ?? []),
-  ].filter(Boolean);
+const BLOCKED_SEARCH_DOMAINS = [
+  "linkedin.com",
+  "indeed.com",
+  "glassdoor.com",
+  "google.com",
+  "youtube.com",
+  "facebook.com",
+  "twitter.com",
+  "x.com",
+  "reddit.com",
+  "wikipedia.org",
+  "medium.com",
+  "quora.com",
+];
 
-  const query = parts.join(" ");
-  const results = await serpSearch(query, params.limit);
+function buildEmployerSearchQueries(params: CompanySearchParams): string[] {
+  const role = params.role;
+  const location = params.location ?? "";
+  const industry = params.industry ?? "";
+  const keywords = (params.keywords ?? []).join(" ");
+  const exclude = "-recruiting -staffing -agency -jobboard -headhunter";
+
+  return [
+    `"${role}" "we're hiring" OR "join our team" OR careers ${location} ${industry} ${keywords} ${exclude}`.trim(),
+    `"${role}" startup OR company ${location} ${industry} ${keywords} careers open roles ${exclude}`.trim(),
+    `"${role}" ${industry} ${location} ${keywords} engineering team product ${exclude}`.trim(),
+  ];
+}
+
+export async function searchCompanies(params: CompanySearchParams) {
+  const fetchLimit = Math.min(params.limit * 3, 30);
+  const queries = buildEmployerSearchQueries(params);
 
   const companies: Array<{
     name: string;
@@ -84,22 +105,25 @@ export async function searchCompanies(params: CompanySearchParams) {
 
   const seenDomains = new Set<string>();
 
-  for (const result of results) {
-    const domain = extractDomain(result.link);
-    if (!domain || seenDomains.has(domain)) continue;
-    if (domain.includes("linkedin.com") || domain.includes("indeed.com")) continue;
-    if (domain.includes("glassdoor.com") || domain.includes("google.com")) continue;
+  for (const query of queries) {
+    const results = await serpSearch(query, fetchLimit);
 
-    seenDomains.add(domain);
-    companies.push({
-      name: result.title.split(" - ")[0].split(" | ")[0].trim(),
-      domain,
-      description: result.snippet,
-      sourceUrl: result.link,
-    });
+    for (const result of results) {
+      const domain = extractDomain(result.link);
+      if (!domain || seenDomains.has(domain)) continue;
+      if (BLOCKED_SEARCH_DOMAINS.some((blocked) => domain.includes(blocked))) continue;
+
+      seenDomains.add(domain);
+      companies.push({
+        name: result.title.split(" - ")[0].split(" | ")[0].trim(),
+        domain,
+        description: result.snippet,
+        sourceUrl: result.link,
+      });
+    }
   }
 
-  return companies.slice(0, params.limit);
+  return companies;
 }
 
 export async function searchPeopleAtCompany(

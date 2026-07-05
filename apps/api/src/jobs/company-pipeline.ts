@@ -16,6 +16,12 @@ import {
   userDataset,
   remember,
 } from "../services/cognee.js";
+import {
+  buildUserMatchContext,
+  isRecruitmentOrJobBoard,
+  scoreCompanyAgainstUser,
+  MIN_MATCH_SCORE,
+} from "../services/company-matcher.js";
 import { getQueueConnection } from "../lib/redis.js";
 
 const connection = getQueueConnection();
@@ -70,10 +76,45 @@ async function processPipeline(job: Job<PipelineJobData>) {
   const { jobId, userId, clerkId, params, cogneeToken } = job.data;
 
   try {
-    await updateJob(jobId, { status: "searching", progress: 10, message: "Searching companies..." });
+    await updateJob(jobId, {
+      status: "searching",
+      progress: 5,
+      message: "Loading your preferences from memory...",
+    });
 
-    const companies = await searchCompanies(params);
-    const results = [];
+    const userContext = await buildUserMatchContext(userId, clerkId, cogneeToken);
+
+    await updateJob(jobId, { status: "searching", progress: 10, message: "Searching employers..." });
+
+    const rawCompanies = await searchCompanies(params);
+    const companies = rawCompanies.filter((c) => !isRecruitmentOrJobBoard(c));
+
+    if (companies.length === 0) {
+      await updateJob(jobId, {
+        status: "completed",
+        progress: 100,
+        message: "No matching employers found — try broadening role or location",
+        result: [],
+      });
+      return [];
+    }
+
+    const scoredResults: Array<{
+      id: string;
+      name: string;
+      domain: string;
+      description?: string;
+      matchScore: number;
+      matchReason: string;
+      contacts: Array<{
+        name: string;
+        title?: string;
+        email: string;
+        source: string;
+        confidence: number;
+      }>;
+      sourceUrl: string;
+    }> = [];
 
     for (let i = 0; i < companies.length; i++) {
       const company = companies[i];
@@ -126,6 +167,7 @@ async function processPipeline(job: Job<PipelineJobData>) {
           data: { crawledAt: new Date(), description: company.description ?? crawlSummary.slice(0, 500) },
         });
       } else {
+        crawlSummary = dbCompany.description ?? "";
         crawledEmails = dbCompany.contacts
           .map((c: CompanyContact) => c.email)
           .filter((e: string | null | undefined): e is string => !!e);
@@ -294,32 +336,64 @@ async function processPipeline(job: Job<PipelineJobData>) {
         }
       }
 
+      const preCheck = isRecruitmentOrJobBoard({
+        ...company,
+        description: `${company.description} ${crawlSummary}`.trim(),
+      });
+      if (preCheck) {
+        console.log(`[pipeline] Skipping ${company.name} (${company.domain}): recruitment/job board`);
+        continue;
+      }
+
+      const companyContext = crawlSummary || company.description || "";
+      const { score: matchScore, reason: matchReason } = await scoreCompanyAgainstUser(
+        userContext,
+        company,
+        companyContext,
+        params.role
+      );
+
+      if (matchScore < MIN_MATCH_SCORE) {
+        console.log(
+          `[pipeline] Skipping ${company.name} (${company.domain}): score ${matchScore} — ${matchReason}`
+        );
+        continue;
+      }
+
       await prisma.userCompanyLink.upsert({
         where: { userId_companyId: { userId, companyId: dbCompany.id } },
-        create: { userId, companyId: dbCompany.id, matchScore: 70 + Math.floor(Math.random() * 20) },
-        update: {},
+        create: { userId, companyId: dbCompany.id, matchScore },
+        update: { matchScore },
       });
 
-      results.push({
+      scoredResults.push({
         id: dbCompany.id,
         name: company.name,
         domain: company.domain,
         description: company.description,
-        matchScore: 70 + Math.floor(Math.random() * 20),
+        matchScore,
+        matchReason,
         contacts,
         sourceUrl: company.sourceUrl,
       });
     }
 
+    const results = scoredResults
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, params.limit);
+
     await remember(
-      `Job search for ${params.role}: found ${results.length} companies - ${results.map((r) => r.name).join(", ")}`,
+      `Job search for ${params.role}: matched ${results.length} companies from memory — ${results.map((r) => `${r.name} (${r.matchScore}%)`).join(", ")}`,
       { dataset: userDataset(clerkId), token: cogneeToken }
     );
 
     await updateJob(jobId, {
       status: "completed",
       progress: 100,
-      message: `Found ${results.length} companies`,
+      message:
+        results.length > 0
+          ? `Found ${results.length} companies matched to your profile`
+          : "No strong matches — try updating your preferences in chat",
       result: results,
     });
 
