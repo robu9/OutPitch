@@ -55,12 +55,7 @@
   --btn-ghost-hover: #f5f5f5;
   --btn-outline-bg: #ffffff;
 
-  --nav-pill-bg: rgba(255, 255, 255, 0.85);
-  --nav-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
-  --nav-pill-shadow-scrolled:
-    0 1px 2px rgba(0, 0, 0, 0.06),
-    0 8px 32px -8px oklch(0.5465 0.246 262.87 / 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.06);
+  --nav-pill-bg: rgba(255, 255, 255, 0.75);
 
   --surface-card-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.03) inset,
@@ -167,20 +162,24 @@ body {
 }
 
 .nav-pill {
-  background: var(--nav-pill-bg);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  border: 1px solid var(--border);
-  box-shadow: var(--nav-pill-shadow);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   transition:
-    box-shadow 0.35s var(--ease-out),
-    border-color 0.35s var(--ease-out),
-    transform 0.35s var(--ease-out);
+    background 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out),
+    border-color 0.3s var(--ease-out),
+    backdrop-filter 0.3s var(--ease-out),
+    -webkit-backdrop-filter 0.3s var(--ease-out);
 }
 
 .nav-pill.nav-scrolled {
-  border-color: var(--border-strong);
-  box-shadow: var(--nav-pill-shadow-scrolled);
+  background: var(--nav-pill-bg);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-color: var(--border);
 }
 
 .hero-radial {

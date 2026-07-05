@@ -12,7 +12,6 @@ import {
   Settings,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import { AppAmbient } from "@/components/app-ambient";
 import { Logo } from "@/components/logo";
 import { ensureGsap, gsap, useGSAP } from "@/lib/gsap-config";
 import { cn } from "@/lib/utils";
@@ -55,10 +54,9 @@ export function AppShell({
 
   return (
     <div ref={shellRef} className="relative flex min-h-screen bg-bg-base text-foreground">
-      <AppAmbient />
       <aside
         className={cn(
-          "relative z-[1] sticky top-0 flex h-screen flex-col border-r border-border bg-bg-elevated/90 backdrop-blur-md transition-[width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "relative z-[1] sticky top-0 flex h-screen flex-col border-r border-border bg-bg-elevated transition-[width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
           collapsed ? "w-[60px]" : "w-[240px]"
         )}
       >
@@ -69,10 +67,10 @@ export function AppShell({
           )}
         >
           {!collapsed ? (
-            <Logo size="sm" href="/chat" />
+            <Logo size="sm" href="/chat" variant="app" />
           ) : (
             <Link href="/chat" aria-label="Outpitch">
-              <Logo size="sm" showWordmark={false} href={null} />
+              <Logo size="sm" showWordmark={false} href={null} variant="app" />
             </Link>
           )}
           {!collapsed && (
@@ -110,7 +108,7 @@ export function AppShell({
                     className={cn(
                       "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
                       active
-                        ? "bg-[var(--accent-blue-glow)] text-[var(--accent-blue)]"
+                        ? "bg-bg-surface text-foreground"
                         : "text-text-secondary hover:bg-bg-hover hover:text-foreground",
                       collapsed && "justify-center px-2"
                     )}

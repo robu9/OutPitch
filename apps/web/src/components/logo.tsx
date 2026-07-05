@@ -5,6 +5,7 @@ interface LogoProps {
   size?: "sm" | "md" | "lg";
   href?: string | null;
   showWordmark?: boolean;
+  variant?: "brand" | "app";
   className?: string;
 }
 
@@ -14,7 +15,15 @@ const sizes = {
   lg: { icon: "h-8 w-8", text: "text-lg" },
 };
 
-function LogoMark({ className }: { className?: string }) {
+function LogoMark({
+  className,
+  variant = "brand",
+}: {
+  className?: string;
+  variant?: "brand" | "app";
+}) {
+  const markBg = variant === "app" ? "var(--btn-primary-bg)" : "var(--logo-mark-bg)";
+
   return (
     <svg
       viewBox="0 0 32 32"
@@ -22,7 +31,7 @@ function LogoMark({ className }: { className?: string }) {
       className={cn("shrink-0", className)}
       aria-hidden
     >
-      <rect width="32" height="32" rx="8" fill="var(--logo-mark-bg)" />
+      <rect width="32" height="32" rx="8" fill={markBg} />
       <path
         d="M9 22V10h3.2l4.8 7.2V10H20v12h-3.2L12 14.8V22H9z"
         fill="var(--logo-mark-fg)"
@@ -35,12 +44,13 @@ export function Logo({
   size = "md",
   href = "/",
   showWordmark = true,
+  variant = "brand",
   className,
 }: LogoProps) {
   const s = sizes[size];
   const content = (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <LogoMark className={s.icon} />
+      <LogoMark className={s.icon} variant={variant} />
       {showWordmark && (
         <span className={cn("font-semibold tracking-tight text-foreground", s.text)}>
           Outpitch

@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { ensureGsap, gsap, ScrollTrigger, useGSAP } from "@/lib/gsap-config";
+import { ensureGsap, gsap, useGSAP } from "@/lib/gsap-config";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -18,8 +18,16 @@ const links = [
 
 export function MarketingNav() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useGSAP(
     () => {
@@ -38,11 +46,6 @@ export function MarketingNav() {
         { y: -10, opacity: 0, duration: 0.45, stagger: 0.06 },
         "-=0.4"
       );
-
-      ScrollTrigger.create({
-        start: "48px top",
-        toggleClass: { targets: nav, className: "nav-scrolled" },
-      });
     },
     { scope: headerRef }
   );
@@ -54,7 +57,10 @@ export function MarketingNav() {
     >
       <nav
         ref={navRef}
-        className="nav-pill flex w-full max-w-4xl items-center justify-between rounded-full px-4 py-2.5 md:px-5"
+        className={cn(
+          "nav-pill flex w-full max-w-4xl items-center justify-between rounded-full px-4 py-2.5 transition-all duration-300 md:px-5",
+          scrolled && "nav-scrolled"
+        )}
         aria-label="Main"
       >
         <div data-nav-item>
