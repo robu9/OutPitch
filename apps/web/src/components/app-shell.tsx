@@ -67,10 +67,10 @@ export function AppShell({
           )}
         >
           {!collapsed ? (
-            <Logo size="sm" href="/chat" />
+            <Logo size="sm" href="/chat" variant="app" />
           ) : (
             <Link href="/chat" aria-label="Outpitch">
-              <Logo size="sm" href={null} compact />
+              <Logo size="sm" href={null} compact variant="app" />
             </Link>
           )}
           {!collapsed && (
