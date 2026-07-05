@@ -19,7 +19,11 @@ import { normalizeLinkedInProfileFields } from "../services/linkedin-profile.js"
 import { buildLinkedInProfileSummary } from "../services/linkedin-profile.js";
 import { enqueueCompanyPipeline, getPipelineStatus } from "../jobs/company-pipeline.js";
 import { ingestUserProfile } from "../services/cognee.js";
-import { assessSearchReadiness, toSearchParams } from "../services/search-context.js";
+import {
+  assessSearchReadiness,
+  shouldAutoStartCompanySearch,
+  toSearchParams,
+} from "../services/search-context.js";
 import {
   buildSenderProfileSummary,
   draftOutreachEmail,
@@ -42,7 +46,8 @@ Response style (important):
 - Surface at most one clear next action per reply rather than listing every feature.
 
 Company discovery (critical — follow every time):
-- When the user asks to search, find, or discover companies (or search/find "more" companies), you MUST call the searchCompanies tool to run a live search. Do NOT reply with company names, suggestions, or recalled matches instead of calling the tool.
+- When the user asks to search, find, or discover companies (or search/find "more" / "new" / "again"), you MUST call the searchCompanies tool to run a live search in that same turn. Never say you will search without calling the tool. Do NOT reply with company names, suggestions, or recalled matches instead of calling the tool.
+- Repeat searches: If the user says "search again", "find more companies", "new companies", etc., call searchCompanies immediately using stored role/location/industry — no confirmation step.
 - Find companies that operate in the user's target field — they do not need to be actively hiring. Cold outreach works by reaching real employers in the space.
 - NEVER call searchCompanies on the first vague request (e.g. "hi", "help me find a job"). Gather missing context first with short questions, one at a time.
 - Before searchCompanies, call recall to check stored preferences. Use the profile snapshot too.
@@ -612,6 +617,37 @@ async function executeTool(
   }
 }
 
+async function autoStartCompanySearchIfReady(
+  ctx: AgentContext
+): Promise<{ started: boolean; toolResult?: string; blocked?: boolean; nextQuestion?: string | null }> {
+  const readiness = await assessSearchReadiness(ctx.userId, ctx.clerkId, ctx.cogneeToken);
+
+  if (!readiness.ready) {
+    return { started: false, blocked: true, nextQuestion: readiness.nextQuestion };
+  }
+
+  const params = toSearchParams(readiness.context);
+  const toolResult = await executeTool(
+    "searchCompanies",
+    {
+      role: params.role,
+      location: params.location,
+      industry: params.industry,
+      companySize: params.companySize,
+      keywords: params.keywords,
+      limit: params.limit,
+    },
+    ctx
+  );
+
+  const parsed = JSON.parse(toolResult) as { blocked?: boolean; nextQuestion?: string };
+  if (parsed.blocked) {
+    return { started: false, blocked: true, nextQuestion: parsed.nextQuestion ?? readiness.nextQuestion };
+  }
+
+  return { started: true, toolResult };
+}
+
 export async function* runAgent(
   message: string,
   history: Array<{ role: string; content: string }>,
@@ -636,6 +672,31 @@ export async function* runAgent(
 
   const contextPrefix = buildProfileContext(dbUser, dbUser?.profile);
 
+  let searchStartedThisTurn = false;
+  const agentCtx: AgentContext = {
+    ...ctx,
+    onSearchStarted: (jobId) => {
+      searchStartedThisTurn = true;
+      ctx.onSearchStarted?.(jobId);
+    },
+  };
+
+  let preSearchNote = "";
+
+  if (shouldAutoStartCompanySearch(message)) {
+    const auto = await autoStartCompanySearchIfReady(agentCtx);
+    if (auto.started && auto.toolResult) {
+      yield `\n[Using tool: searchCompanies]\n`;
+      preSearchNote =
+        `\n\n[System: searchCompanies already ran this turn. Result: ${auto.toolResult}. ` +
+        `Briefly tell the user the search is running and results will appear shortly. ` +
+        `Do NOT call searchCompanies again. Do NOT ask them to say start, go, or yes.]`;
+    } else if (auto.blocked && auto.nextQuestion) {
+      preSearchNote =
+        `\n\n[System: searchCompanies was not started — missing context. Ask the user exactly: "${auto.nextQuestion}"]`;
+    }
+  }
+
   const chat = model.startChat({
     history: history.map((h) => ({
       role: h.role === "assistant" ? "model" : "user",
@@ -643,7 +704,7 @@ export async function* runAgent(
     })),
   });
 
-  let result = await chat.sendMessage(contextPrefix + message);
+  let result = await chat.sendMessage(contextPrefix + message + preSearchNote);
   let response = result.response;
 
   while (response.functionCalls()?.length) {
@@ -651,13 +712,31 @@ export async function* runAgent(
     const functionResponses = [];
 
     for (const call of functionCalls) {
+      if (call.name === "searchCompanies" && searchStartedThisTurn) {
+        functionResponses.push({
+          functionResponse: {
+            name: call.name,
+            response: {
+              message: "Search already started this turn",
+              hint: "Do not start another search. Confirm to the user that results are loading.",
+            },
+          },
+        });
+        continue;
+      }
+
       yield `\n[Using tool: ${call.name}]\n`;
 
       const toolResult = await executeTool(
         call.name,
         call.args as Record<string, unknown>,
-        ctx
+        agentCtx
       );
+
+      if (call.name === "searchCompanies") {
+        const parsed = JSON.parse(toolResult) as { blocked?: boolean };
+        if (!parsed.blocked) searchStartedThisTurn = true;
+      }
 
       functionResponses.push({
         functionResponse: {
@@ -669,6 +748,21 @@ export async function* runAgent(
 
     result = await chat.sendMessage(functionResponses);
     response = result.response;
+  }
+
+  // Model sometimes promises a search without calling the tool — enforce on repeat requests.
+  if (!searchStartedThisTurn && shouldAutoStartCompanySearch(message)) {
+    yield `\n[Using tool: searchCompanies]\n`;
+    const auto = await autoStartCompanySearchIfReady(agentCtx);
+    if (auto.started) {
+      const summary = (JSON.parse(auto.toolResult!) as { searchContext?: string }).searchContext;
+      const fallback =
+        summary != null
+          ? `Searching ${summary.replace(/\s*\|\s*/g, ", ")} now — results will appear shortly.`
+          : "Starting a new company search now — results will appear shortly.";
+      yield fallback;
+      return;
+    }
   }
 
   const text = response.text();

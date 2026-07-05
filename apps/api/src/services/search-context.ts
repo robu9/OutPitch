@@ -29,6 +29,48 @@ const COMPANY_PREF_PATTERN =
 
 export type SearchContextGap = "role" | "location" | "industry" | "company_preferences";
 
+/** User wants another batch of companies (often after outreach on a prior search). */
+const REPEAT_SEARCH_PATTERN =
+  /\b(search\s+again|find\s+(?:more|new|other|another)|(?:more|new|other|another|some)\s+companies?|another\s+search|run\s+(?:another|a\s+new)\s+search|discover\s+more|look\s+for\s+more|fresh\s+companies?|different\s+companies?)\b/i;
+
+/** User is asking to run company discovery (first time or not). */
+const SEARCH_INTENT_PATTERN =
+  /\b(search|find|discover|look\s+for)\b[\s\S]{0,50}\b(companies?|employers?|startups?|firms?)\b/i;
+
+const VAGUE_OPENER_PATTERN =
+  /^(?:hi|hello|hey|yo|sup)\b|^(?:help(?:\s+me)?\s+)?(?:find|get)\s+(?:me\s+)?a\s+job\b|^(?:i\s+)?need\s+a\s+job\b/i;
+
+export function isRepeatCompanySearchRequest(message: string): boolean {
+  return REPEAT_SEARCH_PATTERN.test(message);
+}
+
+export function wantsCompanySearch(message: string): boolean {
+  return isRepeatCompanySearchRequest(message) || SEARCH_INTENT_PATTERN.test(message);
+}
+
+export function isVagueJobSearchOpener(message: string): boolean {
+  const trimmed = message.trim();
+  if (!trimmed) return true;
+  if (VAGUE_OPENER_PATTERN.test(trimmed)) return true;
+  // "help me find a job" with no role/industry/location signals
+  if (
+    /\b(?:help(?:\s+me)?\s+)?find(?:\s+me)?\s+a\s+job\b/i.test(trimmed) &&
+    !/\b(remote|engineer|designer|manager|startup|saas|fintech|ai\b|ml\b|backend|frontend|full[\s-]?stack)\b/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function shouldAutoStartCompanySearch(message: string): boolean {
+  if (!wantsCompanySearch(message)) return false;
+  // Repeat / "more companies" always auto-starts when context exists — never wait for "start".
+  if (isRepeatCompanySearchRequest(message)) return true;
+  return !isVagueJobSearchOpener(message);
+}
+
 function pickFirst(...values: Array<string | undefined | null>): string | undefined {
   for (const value of values) {
     const trimmed = value?.trim();
