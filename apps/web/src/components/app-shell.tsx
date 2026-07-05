@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { SignOutButton, UserButton } from "@clerk/nextjs";
 import {
   Building2,
+  LogOut,
   Mail,
   MessageSquare,
   PanelLeft,
@@ -132,11 +133,37 @@ export function AppShell({
 
         <div
           className={cn(
-            "flex items-center border-t border-border p-3",
-            collapsed ? "justify-center" : "justify-end"
+            "flex items-center gap-2 border-t border-border p-3",
+            collapsed && "flex-col"
           )}
         >
-          <UserButton afterSignOutUrl="/" />
+          <UserButton
+            afterSignOutUrl="/"
+            appearance={{
+              variables: {
+                colorPrimary: "#0a0a0a",
+                colorText: "#0a0a0a",
+                colorTextSecondary: "#525252",
+              },
+              elements: {
+                avatarBox: "h-8 w-8 rounded-full border border-border !bg-bg-surface",
+                userButtonAvatarBox: "h-8 w-8",
+              },
+            }}
+          />
+          <SignOutButton>
+            <button
+              type="button"
+              title={collapsed ? "Sign out" : undefined}
+              className={cn(
+                "flex items-center rounded-lg text-sm text-text-secondary transition-colors hover:bg-bg-hover hover:text-foreground",
+                collapsed ? "h-8 w-8 justify-center" : "min-h-8 flex-1 justify-center gap-2 px-3 py-2"
+              )}
+            >
+              <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+              {!collapsed && <span>Sign out</span>}
+            </button>
+          </SignOutButton>
         </div>
       </aside>
 
