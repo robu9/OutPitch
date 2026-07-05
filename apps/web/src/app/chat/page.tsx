@@ -7,8 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/ui/page-header";
 import { streamChat, apiFetch, type ChatSession } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Send, Terminal, Cpu, ArrowRight, RefreshCw, Plus, Trash2, MessageSquare } from "lucide-react";
+import { Send, Plus, Trash2, MessageSquare } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 
 interface Message {
@@ -18,10 +17,10 @@ interface Message {
 }
 
 const suggestions = [
-  "outpitch discover --role 'Frontend Engineer' --signal 'Series A..C'",
-  "outpitch inspect --pipeline 'Active Companies' --sort 'match_score'",
-  "outpitch draft --target 'VP of Engineering' --tone 'Staff Engineer'",
-  "outpitch memory --status 'Cognee Knowledge Graph'",
+  "Find Series A–C startups hiring frontend engineers",
+  "Show my company pipeline ranked by fit",
+  "Draft outreach to a VP of Engineering at Retool",
+  "What does Cognee remember about my preferences?",
 ];
 
 export default function ChatPage() {
@@ -63,7 +62,6 @@ export default function ChatPage() {
     [user]
   );
 
-  // Initial load: pick the most recent session, or start fresh.
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -155,9 +153,7 @@ export default function ChatPage() {
       (error) => {
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, content: `[SYSTEM ERROR]: ${error}` }
-              : m
+            m.id === assistantId ? { ...m, content: `Error: ${error}` } : m
           )
         );
         setStreaming(false);
@@ -185,21 +181,20 @@ export default function ChatPage() {
           type="button"
           onClick={newChat}
           disabled={streaming}
-          variant="terminal"
-          className="w-full h-9 text-xs font-mono bg-[#161616] hover:bg-[#2a2a2a] text-white justify-center"
+          variant="outline"
+          size="sm"
+          className="w-full"
         >
-          <Plus className="h-3.5 w-3.5 text-accent mr-1" />
-          New Chat
+          <Plus className="h-3.5 w-3.5" />
+          New chat
         </Button>
       </div>
-      <div className="px-4 pb-2 text-[10px] font-mono uppercase tracking-widest text-[#888888]">
-        Chat History
-      </div>
+      <div className="px-4 pb-2 text-xs text-text-secondary">History</div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 space-y-1">
         {sessions.length === 0 ? (
-          <div className="px-2 py-4 text-[11px] font-mono text-[#666]">
+          <p className="px-2 py-4 text-xs text-text-secondary">
             No conversations yet.
-          </div>
+          </p>
         ) : (
           sessions.map((s) => {
             const active = s.id === sessionId;
@@ -208,19 +203,19 @@ export default function ChatPage() {
                 key={s.id}
                 type="button"
                 onClick={() => selectSession(s.id)}
-                className={`group flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-xs font-mono transition-colors ${
+                className={`group flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
                   active
-                    ? "bg-surface-hover text-white border border-accent/40"
-                    : "text-muted-foreground hover:bg-surface hover:text-white border border-transparent"
+                    ? "bg-bg-surface text-white"
+                    : "text-text-secondary hover:bg-bg-hover hover:text-white"
                 }`}
               >
-                <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${active ? "text-accent" : ""}`} aria-hidden />
+                <MessageSquare className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="flex-1 truncate">{s.title}</span>
                 <span
                   role="button"
                   tabIndex={0}
                   onClick={(e) => deleteSession(s.id, e)}
-                  className="opacity-0 group-hover:opacity-100 text-[#888888] hover:text-[#ef4444] transition-opacity shrink-0"
+                  className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-white transition-opacity shrink-0"
                   aria-label="Delete chat"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -235,153 +230,110 @@ export default function ChatPage() {
 
   return (
     <AppShell sidebar={sessionSidebar}>
-      <div className="flex h-screen min-w-0">
-        {/* Chat column */}
-        <div className="flex h-screen min-w-0 flex-1 flex-col bg-[#050505]">
-          <PageHeader
-            title="Intelligence Workstation"
-            description="Autonomous agent terminal for hiring signal discovery and outreach drafting"
-            meta="SESSION // ACTIVE — COGNEE MEMORY COMPOUNDING"
-            action={
-              <div className="flex items-center gap-2">
-                <Badge variant="primary" pulse>GEMINI 3 PRO</Badge>
-                <Link href="/companies">
-                  <Button size="sm" variant="secondary" className="h-8 text-xs font-mono">
-                    View Pipeline <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </Link>
+      <PageHeader
+        title="Chat"
+        description="Discover companies, draft outreach, and refine your search"
+        action={
+          <Link href="/companies">
+            <Button variant="outline" size="sm">
+              View companies
+            </Button>
+          </Link>
+        }
+      />
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-3xl px-5 py-8">
+            {!historyLoaded ? (
+              <div className="flex items-center justify-center py-24 gap-2 text-sm text-text-secondary">
+                <Spinner />
+                Loading...
               </div>
-            }
-          />
-
-          {/* Workstation Chat Area */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-4xl px-5 py-8">
-              {!historyLoaded ? (
-                <div className="flex flex-col items-center justify-center py-24 text-xs font-mono text-[#888888] gap-3">
-                  <Spinner className="h-5 w-5 text-accent" />
-                  <span>INITIALIZING WORKSTATION &amp; SYNCING COGNEE GRAPH...</span>
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="py-12">
-                  <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] p-8 shadow-2xl relative overflow-hidden">
-                    <div className="dot-grid absolute inset-0 opacity-20 pointer-events-none" aria-hidden />
-
-                    <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-4 mb-6">
-                      <div className="flex items-center gap-2 text-xs font-mono text-[#888888]">
-                        <Terminal className="h-4 w-4 text-accent" />
-                        <span>outpitch-cli // workstation-init</span>
-                      </div>
-                      <Badge variant="success">READY FOR COMMANDS</Badge>
-                    </div>
-
-                    <h2 className="text-xl font-semibold text-white tracking-tight">
-                      How can I assist your search today?
-                    </h2>
-                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#888888] text-pretty font-mono">
-                      I am connected to Serper real-time hiring signals, Apollo verified emails, and your persistent Cognee profile graph. Execute a command below or type your own query.
-                    </p>
-
-                    <div className="mt-8 space-y-2.5 font-mono text-xs">
-                      <div className="text-[#888888] uppercase tracking-wider text-[11px] mb-2">
-                        SUGGESTED CLI COMMANDS:
-                      </div>
-                      {suggestions.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => {
-                            setInput(s);
-                            inputRef.current?.focus();
-                          }}
-                          className="flex items-center justify-between w-full rounded border border-[#1f1f1f] bg-[#111111] p-3 text-left text-white transition-all duration-150 hover:border-accent hover:bg-[#161616] group"
-                        >
-                          <div className="flex items-center gap-2.5 truncate">
-                            <span className="text-accent font-bold">&gt;</span>
-                            <span className="truncate">{s}</span>
-                          </div>
-                          <span className="text-[10px] text-[#888888] group-hover:text-white shrink-0 ml-2">[EXECUTE]</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className={msg.role === "user" ? "flex justify-end" : ""}>
-                      {msg.role === "assistant" ? (
-                        <div className="w-full rounded-lg border border-[#1f1f1f] bg-[#080808] p-5 shadow-lg font-mono text-xs sm:text-sm">
-                          <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-3 mb-3 text-[11px] text-[#888888]">
-                            <div className="flex items-center gap-2">
-                              <Cpu className="h-3.5 w-3.5 text-accent" />
-                              <span className="text-white font-bold">OUTPITCH AGENT</span>
-                              <span>|</span>
-                              <span>MODEL: GEMINI 3 PRO</span>
-                            </div>
-                            <Badge variant="primary">COGNEE MEMORY SYNCED</Badge>
-                          </div>
-                          <div className="text-[#d4d4d4] leading-relaxed whitespace-pre-wrap font-sans">
-                            {msg.content || (
-                              <span className="inline-flex items-center gap-2 text-[#888888] font-mono">
-                                <RefreshCw className="h-3.5 w-3.5 animate-spin text-accent" />
-                                Computing reasoning &amp; querying graph...
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="max-w-[85%] rounded-lg border border-[#2a2a2a] bg-[#111111] px-4 py-3 text-sm text-white font-mono shadow-sm">
-                          <div className="text-[10px] text-[#888888] mb-1 uppercase tracking-wider">&gt; USER COMMAND:</div>
-                          {msg.content}
-                        </div>
-                      )}
-                    </div>
+            ) : messages.length === 0 ? (
+              <div className="py-12">
+                <h2 className="text-xl font-medium text-white">
+                  How can I help with your search?
+                </h2>
+                <p className="mt-2 max-w-lg text-sm text-text-secondary text-pretty">
+                  Ask me to discover companies, find contacts, or draft personalized
+                  outreach. I remember your preferences across sessions.
+                </p>
+                <div className="mt-8 grid gap-2 sm:grid-cols-2">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setInput(s);
+                        inputRef.current?.focus();
+                      }}
+                      className="rounded-xl border border-border bg-bg-elevated px-4 py-3 text-left text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-white"
+                    >
+                      {s}
+                    </button>
                   ))}
                 </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
-          </div>
-
-          {/* Workstation Command Input Bar */}
-          <div className="shrink-0 border-t border-[#1f1f1f] bg-[#0b0b0b] p-4">
-            <form onSubmit={handleSend} className="mx-auto flex max-w-4xl items-end gap-3">
-              <div className="flex-1 rounded-md border border-[#1f1f1f] bg-[#080808] px-3.5 py-2.5 flex items-center gap-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
-                <span className="text-accent font-mono font-bold text-sm">&gt;</span>
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Enter command or query (e.g. outpitch discover --role 'AI Engineer')..."
-                  disabled={streaming}
-                  rows={1}
-                  className="flex-1 resize-none bg-transparent text-sm text-white placeholder:text-[#888888] focus:outline-none disabled:opacity-50 font-mono"
-                  style={{ minHeight: "24px", maxHeight: "120px" }}
-                />
               </div>
-              <Button
-                type="submit"
-                disabled={streaming || !input.trim()}
-                variant="terminal"
-                className="h-10 px-5 text-xs font-mono bg-[#161616] hover:bg-[#2a2a2a] text-white shrink-0"
-              >
-                {streaming ? (
-                  <Spinner className="h-4 w-4 text-accent" />
-                ) : (
-                  <>
-                    <Send className="h-3.5 w-3.5 text-accent" />
-                    Execute
-                  </>
-                )}
-              </Button>
-            </form>
-            <div className="mx-auto mt-2.5 max-w-4xl flex items-center justify-between text-[11px] font-mono text-[#888888] px-1">
-              <span>[ENTER] TO EXECUTE • [SHIFT+ENTER] FOR NEW LINE</span>
-              <span>COGNEE PERSISTENT GRAPH: <span className="text-[#10b981]">CONNECTED</span></span>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={msg.role === "user" ? "flex justify-end" : ""}
+                  >
+                    <div
+                      className={
+                        msg.role === "user"
+                          ? "max-w-[85%] rounded-2xl rounded-br-md bg-white px-4 py-3 text-sm text-[#050505]"
+                          : "max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-bg-elevated px-4 py-3 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap"
+                      }
+                    >
+                      {msg.content ||
+                        (msg.role === "assistant" && streaming ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Spinner className="h-3.5 w-3.5" />
+                            Thinking...
+                          </span>
+                        ) : null)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div ref={bottomRef} />
           </div>
+        </div>
+
+        <div className="shrink-0 border-t border-border bg-bg-elevated p-4">
+          <form
+            onSubmit={handleSend}
+            className="mx-auto flex max-w-3xl items-end gap-3"
+          >
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask Outpitch anything..."
+              disabled={streaming}
+              rows={1}
+              className="flex-1 resize-none rounded-xl border border-border bg-bg-surface px-4 py-3 text-sm text-white placeholder:text-text-secondary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-white/10 disabled:opacity-50"
+              style={{ minHeight: "44px", maxHeight: "120px" }}
+            />
+            <Button
+              type="submit"
+              disabled={streaming || !input.trim()}
+              className="h-11 w-11 shrink-0 rounded-xl p-0"
+              aria-label="Send message"
+            >
+              {streaming ? (
+                <Spinner className="h-4 w-4 text-[#050505]" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </form>
         </div>
       </div>
     </AppShell>

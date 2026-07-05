@@ -1,48 +1,58 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface LogoProps {
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   href?: string | null;
   showWordmark?: boolean;
+  className?: string;
 }
 
-export function Logo({ size = "md", href = "/", showWordmark = true }: LogoProps) {
-  const iconSize = size === "sm" ? 24 : 28;
-  const textSize = size === "sm" ? "text-sm" : "text-base";
+const sizes = {
+  sm: { icon: "h-6 w-6", text: "text-sm" },
+  md: { icon: "h-7 w-7", text: "text-base" },
+  lg: { icon: "h-8 w-8", text: "text-lg" },
+};
 
-  const mark = (
-    <span className="inline-flex items-center gap-2.5">
-      <svg
-        width={iconSize}
-        height={iconSize}
-        viewBox="0 0 28 28"
-        fill="none"
-        aria-hidden
-        className="shrink-0"
-      >
-        <rect width="28" height="28" rx="7" className="fill-primary" />
-        <circle
-          cx="14"
-          cy="14"
-          r="5.5"
-          strokeWidth="2.5"
-          className="stroke-primary-foreground"
-          fill="none"
-        />
-      </svg>
+function LogoMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      fill="none"
+      className={cn("shrink-0", className)}
+      aria-hidden
+    >
+      <rect width="32" height="32" rx="8" fill="#ffffff" />
+      <path
+        d="M9 22V10h3.2l4.8 7.2V10H20v12h-3.2L12 14.8V22H9z"
+        fill="#050505"
+      />
+    </svg>
+  );
+}
+
+export function Logo({
+  size = "md",
+  href = "/",
+  showWordmark = true,
+  className,
+}: LogoProps) {
+  const s = sizes[size];
+  const content = (
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
+      <LogoMark className={s.icon} />
       {showWordmark && (
-        <span className={`${textSize} font-semibold tracking-tight text-foreground`}>
+        <span className={cn("font-semibold tracking-tight text-white", s.text)}>
           Outpitch
         </span>
       )}
     </span>
   );
 
-  if (href === null) return mark;
-
+  if (href === null) return content;
   return (
-    <Link href={href} className="inline-flex items-center transition-opacity hover:opacity-80">
-      {mark}
+    <Link href={href} className="inline-flex items-center">
+      {content}
     </Link>
   );
 }

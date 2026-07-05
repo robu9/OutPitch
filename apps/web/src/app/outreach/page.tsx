@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoader } from "@/components/ui/spinner";
-import { Clock, Mail, MessageSquare, Reply, Send, Terminal, TrendingUp, ShieldCheck } from "lucide-react";
+import { Clock, Mail, MessageSquare, Reply, Send } from "lucide-react";
 
 interface Campaign {
   id: string;
@@ -24,12 +24,12 @@ interface Campaign {
 
 const statusConfig: Record<
   string,
-  { label: string; variant: "success" | "primary" | "warning" | "muted"; icon: typeof Send }
+  { label: string; variant: "default" | "primary" | "outline"; icon: typeof Send }
 > = {
-  sent: { label: "DISPATCHED", variant: "primary", icon: Send },
-  replied: { label: "REPLIED // MATCH", variant: "success", icon: Reply },
-  draft: { label: "DRAFT // QUEUED", variant: "muted", icon: Mail },
-  pending: { label: "PENDING DISPATCH", variant: "warning", icon: Clock },
+  sent: { label: "Sent", variant: "primary", icon: Send },
+  replied: { label: "Replied", variant: "primary", icon: Reply },
+  draft: { label: "Draft", variant: "outline", icon: Mail },
+  pending: { label: "Pending", variant: "default", icon: Clock },
 };
 
 export default function OutreachPage() {
@@ -49,7 +49,7 @@ export default function OutreachPage() {
 
   const sent = campaigns.filter((c) => c.status === "sent" || c.status === "replied").length;
   const replied = campaigns.filter((c) => c.status === "replied").length;
-  const replyRate = sent > 0 ? ((replied / sent) * 100).toFixed(1) : "0.0";
+  const replyRate = sent > 0 ? ((replied / sent) * 100).toFixed(0) : "0";
 
   if (loading) {
     return (
@@ -62,121 +62,76 @@ export default function OutreachPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Campaign Telemetry Log"
-        description="Real-time dispatch status and decision-maker response tracking via Composio OAuth"
-        meta="TELEMETRY // OUTREACH DISPATCH LOG — COMPOSIO DIRECT INBOX"
+        title="Outreach"
+        description="Track drafts, sent emails, and replies"
         action={
           campaigns.length > 0 ? (
-            <div className="flex items-center gap-6 text-xs font-mono bg-[#111111] px-4 py-2 rounded border border-[#1f1f1f]">
-              <div>
-                <span className="text-[#888888]">TOTAL: </span>
-                <strong className="text-white tabular-nums">{campaigns.length}</strong>
-              </div>
-              <div>
-                <span className="text-[#888888]">DISPATCHED: </span>
-                <strong className="text-accent tabular-nums">{sent}</strong>
-              </div>
-              <div>
-                <span className="text-[#888888]">REPLIES: </span>
-                <strong className="text-[#10b981] tabular-nums">{replied}</strong>
-              </div>
-              <div>
-                <span className="text-[#888888]">CONVERSION: </span>
-                <strong className="text-[#10b981] tabular-nums">{replyRate}%</strong>
-              </div>
+            <div className="flex gap-4 text-sm text-text-secondary">
+              <span>
+                <strong className="text-white">{sent}</strong> sent
+              </span>
+              <span>
+                <strong className="text-white">{replied}</strong> replies
+              </span>
+              <span>
+                <strong className="text-white">{replyRate}%</strong> reply rate
+              </span>
             </div>
           ) : undefined
         }
       />
 
-      <div className="flex-1 overflow-y-auto bg-[#050505]">
-        <div className="mx-auto max-w-5xl px-5 py-8">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-4xl px-5 py-8">
           {campaigns.length === 0 ? (
             <EmptyState
               icon={Mail}
-              title="Telemetry log empty // no campaigns dispatched"
-              description="Use the Workstation chat to draft and dispatch personalized outreach emails to verified decision makers at your target startups."
+              title="No outreach yet"
+              description="Draft and send personalized emails through chat."
               action={
                 <Link href="/chat">
-                  <Button variant="terminal" size="md" className="h-9 px-4 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]">
-                    <Terminal className="h-3.5 w-3.5 text-accent mr-1" />
-                    Draft Outreach in Chat
+                  <Button>
+                    <MessageSquare className="h-4 w-4" />
+                    Draft in chat
                   </Button>
                 </Link>
               }
             />
           ) : (
-            <div className="space-y-6">
-              {/* Telemetry Log Banner */}
-              <div className="rounded-lg border border-[#1f1f1f] bg-[#080808] p-4 flex items-center justify-between text-xs font-mono">
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-[#10b981] animate-pulse" />
-                  <span className="text-white font-bold">DISPATCH PIPELINE HEALTH: 100% OPERATIONAL</span>
-                </div>
-                <div className="flex items-center gap-2 text-[#888888]">
-                  <ShieldCheck className="h-4 w-4 text-accent" />
-                  <span>COMPOSIO OAUTH 2.0 VERIFIED SENDING</span>
-                </div>
-              </div>
+            <div className="space-y-3">
+              {campaigns.map((campaign) => {
+                const config = statusConfig[campaign.status] ?? statusConfig.pending;
+                const StatusIcon = config.icon;
 
-              {/* Timestamped Log List */}
-              <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] overflow-hidden shadow-2xl divide-y divide-[#1f1f1f]">
-                <div className="grid grid-cols-12 border-b border-[#1f1f1f] bg-[#0d0d0d] px-5 py-3 text-xs font-mono font-bold text-[#888888]">
-                  <div className="col-span-3">TIMESTAMP &amp; STATUS</div>
-                  <div className="col-span-4">RECIPIENT &amp; COMPANY</div>
-                  <div className="col-span-5">SUBJECT &amp; REASONING</div>
-                </div>
-
-                {campaigns.map((campaign) => {
-                  const config = statusConfig[campaign.status] ?? statusConfig.pending;
-                  const StatusIcon = config.icon;
-
-                  return (
-                    <article
-                      key={campaign.id}
-                      className="grid grid-cols-12 items-center px-5 py-4 gap-4 text-xs font-mono transition-colors hover:bg-[#0c0c0c]"
-                    >
-                      {/* Timestamp & Status Badge */}
-                      <div className="col-span-3 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <StatusIcon className="h-3.5 w-3.5 text-accent shrink-0" />
-                          <Badge variant={config.variant}>{config.label}</Badge>
-                        </div>
-                        <div className="text-[11px] text-[#888888] tabular-nums">
-                          {campaign.sentAt ? (
-                            `[${new Date(campaign.sentAt).toISOString().replace("T", " ").substring(0, 19)} UTC]`
-                          ) : (
-                            "[QUEUED FOR DISPATCH]"
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Recipient & Company */}
-                      <div className="col-span-4 min-w-0 space-y-0.5">
-                        <div className="font-semibold text-white truncate">
-                          {campaign.contact ? campaign.contact.name : "Hiring Team"}
-                        </div>
-                        <div className="text-[#888888] truncate">
-                          @{campaign.company.name}
-                          {campaign.contact?.email && (
-                            <span className="text-accent ml-1">({campaign.contact.email})</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Subject Preview */}
-                      <div className="col-span-5 min-w-0 space-y-1">
-                        <div className="text-white font-medium truncate">
-                          {campaign.subject ?? "No subject specified"}
-                        </div>
-                        <div className="text-[11px] text-[#888888] line-clamp-1 text-pretty">
-                          {campaign.body ? campaign.body.substring(0, 90) + "..." : "Draft generated by Gemini 3 Pro reasoning engine."}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                return (
+                  <article
+                    key={campaign.id}
+                    className="rounded-xl border border-border bg-bg-elevated p-5 transition-colors hover:border-border-strong"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusIcon className="h-4 w-4 text-text-secondary" aria-hidden />
+                      <Badge variant={config.variant}>{config.label}</Badge>
+                      {campaign.sentAt && (
+                        <span className="text-xs text-text-secondary">
+                          {new Date(campaign.sentAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="mt-3 text-sm font-medium text-white">
+                      {campaign.subject ?? "No subject"}
+                    </h3>
+                    <p className="mt-1 text-sm text-text-secondary">
+                      {campaign.contact?.name ?? "Hiring team"} at {campaign.company.name}
+                      {campaign.contact?.email && ` · ${campaign.contact.email}`}
+                    </p>
+                    {campaign.body && (
+                      <p className="mt-3 text-sm text-text-secondary line-clamp-2 text-pretty">
+                        {campaign.body}
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>

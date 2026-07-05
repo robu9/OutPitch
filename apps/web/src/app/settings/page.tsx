@@ -8,20 +8,17 @@ import { PageHeader } from "@/components/ui/page-header";
 import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Brain,
   CheckCircle2,
   Linkedin,
   Mail,
+  MessageCircle,
   RefreshCw,
   Unplug,
   XCircle,
-  Terminal,
-  ShieldCheck,
-  Cpu,
-  Database,
-  MessageCircle,
 } from "lucide-react";
 
 type ConnectionStatus = {
@@ -84,13 +81,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!user || oauthHandled.current) return;
-
     const connect = searchParams.get("connect");
     const oauthStatus = searchParams.get("status");
     if (connect !== "linkedin") return;
-
     oauthHandled.current = true;
-
     if (oauthStatus === "success") {
       syncLinkedIn()
         .finally(() => router.replace("/settings"))
@@ -99,10 +93,9 @@ export default function SettingsPage() {
         });
       return;
     }
-
     if (oauthStatus === "failed") {
       router.replace("/settings");
-      setError("LinkedIn connection was cancelled or failed. Please try again.");
+      setError("LinkedIn connection was cancelled or failed.");
     }
   }, [user, searchParams, router, syncLinkedIn]);
 
@@ -116,7 +109,7 @@ export default function SettingsPage() {
         { clerkUserId: user.id }
       );
       if (!url) {
-        setError("No OAuth URL returned. Check your Composio configuration.");
+        setError("No OAuth URL returned.");
         return;
       }
       window.location.href = url;
@@ -154,7 +147,7 @@ export default function SettingsPage() {
         { clerkUserId: user.id }
       );
       if (!url) {
-        setError("No OAuth URL returned. Check your Composio configuration.");
+        setError("No OAuth URL returned.");
         return;
       }
       window.location.href = url;
@@ -206,157 +199,108 @@ export default function SettingsPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Connection Matrix"
-        description="Manage Composio OAuth accounts and Cognee neural graph integrations"
-        meta="MATRIX // INTEGRATIONS & MEMORY CONFIGURATION"
+        title="Settings"
+        description="Manage connections and integrations"
       />
 
-      <div className="flex-1 overflow-y-auto bg-[#050505]">
-        <div className="mx-auto max-w-4xl px-5 py-8">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-2xl px-5 py-8 space-y-10">
           {error && (
             <div
               role="alert"
-              className="mb-6 flex items-start gap-3 rounded-md border border-[#ef4444]/40 bg-[#ef4444]/10 px-4 py-3 text-xs font-mono text-[#ef4444]"
+              className="flex items-start gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 text-sm text-white"
             >
-              <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span>[SYSTEM ERROR]: {error}</span>
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
+              {error}
             </div>
           )}
 
-          {/* SECTION 1: OAUTH CONNECTIONS */}
-          <section aria-labelledby="connections-heading">
-            <div className="flex items-center justify-between mb-4">
-              <h2
-                id="connections-heading"
-                className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2"
-              >
-                <Terminal className="h-3.5 w-3.5" />
-                SECTION 01 // COMPOSIO OAUTH INTEGRATIONS
-              </h2>
-              <Badge variant="success">OAUTH 2.0 ENCRYPTED</Badge>
-            </div>
+          <section>
+            <h2 className="text-sm font-medium text-white">Connections</h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              Link accounts to power discovery and outreach.
+            </p>
 
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] overflow-hidden shadow-xl divide-y divide-[#1f1f1f]">
-              {/* LinkedIn Row */}
+            <div className="mt-4 space-y-3">
               <ConnectionRow
                 icon={Linkedin}
-                name="LinkedIn Professional Graph"
+                name="LinkedIn"
                 description={
                   linkedinSyncing
-                    ? "Syncing career experience and skills into Cognee dataset…"
-                    : status.linkedinTokenExpired
-                      ? "OAuth token expired — re-authenticate to maintain memory sync"
-                      : status.linkedinConnected
-                        ? status.linkedinProfileSynced
-                          ? "Connected & Synced — career history stored in Cognee graph"
-                          : "Connected — click Sync to compound your career history"
-                        : "Required for matching candidate tone and technical seniority"
+                    ? "Syncing your profile..."
+                    : status.linkedinConnected
+                      ? status.linkedinProfileSynced
+                        ? "Connected and synced to memory"
+                        : "Connected — sync your profile"
+                      : "Import career history for better matching"
                 }
                 connected={status.linkedinConnected && !status.linkedinTokenExpired}
-                statusBadge={
+                badge={
                   status.linkedinConnected
                     ? linkedinSyncing
-                      ? { label: "SYNCING GRAPH", variant: "warning" as const }
+                      ? "Syncing"
                       : status.linkedinProfileSynced
-                        ? { label: "COGNEE SYNCED", variant: "success" as const }
-                        : { label: "OAUTH ACTIVE", variant: "primary" as const }
+                        ? "Synced"
+                        : "Connected"
                     : undefined
                 }
                 actions={
                   status.linkedinConnected ? (
-                    <div className="flex items-center gap-2">
-                      {status.linkedinTokenExpired ? (
+                    <div className="flex gap-2">
+                      {!status.linkedinTokenExpired && (
                         <Button
                           size="sm"
-                          variant="terminal"
-                          className="h-8 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]"
-                          onClick={() => {
-                            disconnectLinkedIn().then(() => connectLinkedIn());
-                          }}
-                          disabled={loading !== null}
-                        >
-                          {loading && <Spinner className="h-3 w-3 text-accent mr-1" />}
-                          Re-authenticate
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="terminal"
-                          className="h-8 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]"
+                          variant="outline"
                           onClick={syncLinkedIn}
                           disabled={loading !== null}
                         >
                           {loading === "linkedin-sync" ? (
-                            <Spinner className="h-3 w-3 text-accent mr-1" />
+                            <Spinner />
                           ) : (
-                            <RefreshCw className="h-3 w-3 mr-1 text-accent" aria-hidden />
+                            <RefreshCw className="h-3.5 w-3.5" />
                           )}
-                          Sync Graph
+                          Sync
                         </Button>
                       )}
                       <Button
                         size="sm"
-                        variant="secondary"
-                        className="h-8 text-xs font-mono"
+                        variant="ghost"
                         onClick={disconnectLinkedIn}
                         disabled={loading !== null}
                       >
-                        {loading === "linkedin-disconnect" ? (
-                          <Spinner className="h-3 w-3 mr-1" />
-                        ) : (
-                          <Unplug className="h-3 w-3 mr-1 text-[#ef4444]" aria-hidden />
-                        )}
+                        <Unplug className="h-3.5 w-3.5" />
                         Disconnect
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="terminal"
-                      className="h-8 text-xs font-mono bg-white text-black hover:bg-[#e0e0e0] font-bold"
-                      onClick={connectLinkedIn}
-                      disabled={loading !== null}
-                    >
-                      {loading === "linkedin-connect" && <Spinner className="h-3 w-3 mr-1" />}
-                      Connect LinkedIn OAuth
+                    <Button size="sm" onClick={connectLinkedIn} disabled={loading !== null}>
+                      {loading === "linkedin-connect" && <Spinner className="h-3.5 w-3.5 text-[#050505]" />}
+                      Connect
                     </Button>
                   )
                 }
               />
 
-              {/* Gmail Row */}
               <ConnectionRow
                 icon={Mail}
-                name="Google Workspace / Gmail Inbox"
-                description="Direct OAuth dispatch via Composio. Drafts land straight in your inbox or send automatically with reply tracking."
+                name="Gmail"
+                description="Send outreach directly from your inbox"
                 connected={status.gmailConnected}
-                statusBadge={
-                  status.gmailConnected
-                    ? { label: "INBOX CONNECTED", variant: "success" as const }
-                    : undefined
-                }
+                badge={status.gmailConnected ? "Connected" : undefined}
                 actions={
                   status.gmailConnected ? (
                     <Button
                       size="sm"
-                      variant="secondary"
-                      className="h-8 text-xs font-mono"
+                      variant="ghost"
                       onClick={disconnectGmail}
                       disabled={loading !== null}
                     >
-                      {loading === "gmail-disconnect" && <Spinner className="h-3 w-3 mr-1" />}
-                      Disconnect Inbox
+                      Disconnect
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="terminal"
-                      className="h-8 text-xs font-mono bg-white text-black hover:bg-[#e0e0e0] font-bold"
-                      onClick={connectGmail}
-                      disabled={loading !== null}
-                    >
-                      {loading === "gmail-connect" && <Spinner className="h-3 w-3 mr-1" />}
-                      Connect Gmail OAuth
+                    <Button size="sm" onClick={connectGmail} disabled={loading !== null}>
+                      {loading === "gmail-connect" && <Spinner className="h-3.5 w-3.5 text-[#050505]" />}
+                      Connect
                     </Button>
                   )
                 }
@@ -364,124 +308,72 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* SECTION 2: WHATSAPP AGENT ACCESS */}
-          <section className="mt-12" aria-labelledby="whatsapp-heading">
-            <div className="flex items-center justify-between mb-4">
-              <h2
-                id="whatsapp-heading"
-                className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                SECTION 02 // WHATSAPP AGENT ACCESS
-              </h2>
-              <Badge variant={status.whatsappVerified ? "success" : "muted"}>
-                {status.whatsappVerified ? "CHANNEL LINKED" : "NOT LINKED"}
-              </Badge>
-            </div>
+          <section>
+            <h2 className="text-sm font-medium text-white">WhatsApp</h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              Chat with Outpitch from your phone.
+            </p>
 
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] p-6 sm:p-8 shadow-xl">
-              <div className="flex flex-col md:flex-row md:items-start gap-6">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#111111] text-white">
-                  <MessageCircle className="h-6 w-6 text-accent" />
+            <div className="mt-4 rounded-xl border border-border bg-bg-elevated p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-surface">
+                  <MessageCircle className="h-5 w-5 text-white" aria-hidden />
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-base font-semibold text-white">
-                      Chat with Outpitch on WhatsApp
-                    </h3>
-                    {status.whatsappVerified && (
-                      <Badge variant="success">
-                        {status.whatsappNumber ?? "VERIFIED"}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs leading-relaxed text-[#888888] font-mono text-pretty">
-                    Link your WhatsApp number to run company searches, draft and send
-                    outreach, and refresh your LinkedIn profile — the full agent, from
-                    your phone. Enter your number, then text the 6-digit code we give you
-                    to the Outpitch business number.
-                  </p>
-
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                    <input
+                  {status.whatsappVerified && (
+                    <Badge className="mb-2">{status.whatsappNumber ?? "Verified"}</Badge>
+                  )}
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Input
                       type="tel"
-                      inputMode="tel"
                       value={whatsappInput}
                       onChange={(e) => setWhatsappInput(e.target.value)}
                       placeholder="+1 555 123 4567"
-                      className="flex-1 rounded-md border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-xs font-mono text-white placeholder:text-[#555] focus:border-accent focus:outline-none"
+                      className="flex-1"
                     />
                     <Button
-                      size="sm"
-                      variant="terminal"
-                      className="h-9 text-xs font-mono bg-white text-black hover:bg-[#e0e0e0] font-bold"
+                      size="md"
                       onClick={linkWhatsApp}
                       disabled={loading !== null || !whatsappInput.trim()}
                     >
-                      {loading === "whatsapp-link" && (
-                        <Spinner className="h-3 w-3 mr-1" />
-                      )}
-                      {status.whatsappVerified ? "Re-link Number" : "Link WhatsApp"}
+                      {loading === "whatsapp-link" && <Spinner className="h-3.5 w-3.5 text-[#050505]" />}
+                      {status.whatsappVerified ? "Re-link" : "Link"}
                     </Button>
                   </div>
-
                   {whatsappCode && !status.whatsappVerified && (
-                    <div className="mt-4 rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-xs font-mono text-white">
-                      Text this code from WhatsApp to finish linking:{" "}
-                      <span className="font-bold tracking-widest text-accent">
-                        {whatsappCode}
-                      </span>
-                    </div>
+                    <p className="mt-3 text-sm text-text-secondary">
+                      Text this code to finish linking:{" "}
+                      <strong className="text-white tracking-widest">{whatsappCode}</strong>
+                    </p>
                   )}
                 </div>
               </div>
             </div>
           </section>
 
-          {/* SECTION 3: COGNEE PERSISTENT GRAPH */}
-          <section className="mt-12" aria-labelledby="memory-heading">
-            <div className="flex items-center justify-between mb-4">
-              <h2
-                id="memory-heading"
-                className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2"
-              >
-                <Brain className="h-3.5 w-3.5" />
-                SECTION 03 // COGNEE PERSISTENT MEMORY GRAPH
-              </h2>
-              <Badge variant="primary" pulse>NEURAL STORAGE ACTIVE</Badge>
-            </div>
+          <section>
+            <h2 className="text-sm font-medium text-white">Cognee memory</h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              Your profile, research, and conversations stored as a knowledge graph.
+            </p>
 
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] p-6 sm:p-8 shadow-xl relative overflow-hidden">
-              <div className="dot-grid absolute inset-0 opacity-20 pointer-events-none" aria-hidden />
-
-              <div className="flex flex-col md:flex-row md:items-start gap-6 relative z-10">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#2a2a2a] bg-[#111111] text-white">
-                  <Database className="h-6 w-6 text-accent" />
+            <div className="mt-4 rounded-xl border border-border bg-bg-elevated p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-surface">
+                  <Brain className="h-5 w-5 text-white" aria-hidden />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-base font-semibold text-white">Cognee Neural Knowledge Dataset</h3>
-                    <Badge variant="muted">COMPOUNDING</Badge>
-                  </div>
-                  <p className="text-xs leading-relaxed text-[#888888] font-mono text-pretty">
-                    Outpitch stores your profile nuances, chat instructions, and per-company research in Cognee graph storage. This context prevents hallucinated cover letters and ensures outreach sounds like an experienced peer Staff Engineer.
-                  </p>
-
-                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
-                    <div className="rounded border border-[#1f1f1f] bg-[#111111] p-3 flex items-center gap-2.5">
-                      <CheckCircle2 className="h-4 w-4 text-[#10b981] shrink-0" />
-                      <span className="text-white">User Profile &amp; Tone Graph</span>
-                    </div>
-                    <div className="rounded border border-[#1f1f1f] bg-[#111111] p-3 flex items-center gap-2.5">
-                      <CheckCircle2 className="h-4 w-4 text-[#10b981] shrink-0" />
-                      <span className="text-white">Per-Company Research Datasets</span>
-                    </div>
-                    <div className="rounded border border-[#1f1f1f] bg-[#111111] p-3 flex items-center gap-2.5">
-                      <CheckCircle2 className="h-4 w-4 text-[#10b981] shrink-0" />
-                      <span className="text-white">Persistent Session Recall</span>
-                    </div>
-                  </div>
-                </div>
+                <ul className="space-y-2 text-sm text-text-secondary">
+                  {[
+                    "Profile and preferences",
+                    "Company research",
+                    "Conversation history",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-white" aria-hidden />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </section>
@@ -496,39 +388,35 @@ function ConnectionRow({
   name,
   description,
   connected,
-  statusBadge,
+  badge,
   actions,
 }: {
   icon: typeof Linkedin;
   name: string;
   description: string;
   connected: boolean;
-  statusBadge?: { label: string; variant: "success" | "primary" | "warning" };
+  badge?: string;
   actions: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-[#0c0c0c]">
+    <div className="flex flex-col gap-4 rounded-xl border border-border bg-bg-elevated p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-4">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
-            connected
-              ? "border-accent/40 bg-surface text-accent"
-              : "border-[#1f1f1f] bg-[#0c0c0c] text-[#888888]"
+            connected ? "border-white bg-bg-surface" : "border-border bg-bg-base"
           }`}
         >
-          <Icon className="h-5 w-5" aria-hidden />
+          <Icon className="h-5 w-5 text-white" aria-hidden />
         </div>
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-white">{name}</h3>
-            {statusBadge && <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>}
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium text-white">{name}</h3>
+            {badge && <Badge variant="outline">{badge}</Badge>}
           </div>
-          <p className="mt-1 text-xs text-[#888888] font-mono leading-relaxed max-w-lg text-pretty">
-            {description}
-          </p>
+          <p className="mt-1 text-sm text-text-secondary text-pretty">{description}</p>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2 sm:ml-4">{actions}</div>
+      <div className="shrink-0">{actions}</div>
     </div>
   );
 }

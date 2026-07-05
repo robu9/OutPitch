@@ -19,9 +19,6 @@ import {
   MessageSquare,
   ThumbsDown,
   ThumbsUp,
-  Terminal,
-  Database,
-  CheckCircle2,
 } from "lucide-react";
 
 interface Company {
@@ -70,13 +67,6 @@ export default function CompaniesPage() {
     });
   }
 
-  function scoreVariant(score: number): "success" | "primary" | "warning" | "muted" {
-    if (score >= 80) return "success";
-    if (score >= 60) return "primary";
-    if (score >= 40) return "warning";
-    return "muted";
-  }
-
   if (loading) {
     return (
       <AppShell>
@@ -88,194 +78,151 @@ export default function CompaniesPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Discovered Pipeline"
+        title="Companies"
         description={
           companies.length > 0
-            ? `${companies.length} active targets identified · ranked by Cognee neural match score`
-            : "Active hiring signals discovered by Serper and enriched via Apollo"
-        }
-        meta="PIPELINE // ACTIVE — SERPER + APOLLO ENRICHED"
-        action={
-          companies.length > 0 ? (
-            <div className="flex items-center gap-4 text-xs font-mono text-[#888888] bg-[#111111] px-3 py-1.5 rounded border border-[#1f1f1f]">
-              <span>TOTAL TARGETS: <strong className="text-white">{companies.length}</strong></span>
-              <span>•</span>
-              <span>ENRICHED EMAILS: <strong className="text-[#10b981]">{companies.reduce((acc, c) => acc + c.contacts.length, 0)}</strong></span>
-            </div>
-          ) : undefined
+            ? `${companies.length} companies in your pipeline`
+            : "Discover companies through chat to build your pipeline"
         }
       />
 
-      <div className="flex-1 overflow-y-auto bg-[#050505]">
-        <div className="mx-auto max-w-5xl px-5 py-8">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-4xl px-5 py-8">
           {companies.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title="Pipeline empty // no targets discovered"
-              description="Execute a discovery command in the Workstation chat (e.g. 'outpitch discover --role Senior Frontend'). Outpitch will scan Serper hiring signals and enrich decision-maker emails automatically."
+              title="No companies yet"
+              description="Start a conversation in chat to discover companies hiring for your role."
               action={
                 <Link href="/chat">
-                  <Button variant="terminal" size="md" className="h-9 px-4 text-xs font-mono bg-[#161616] text-white hover:bg-[#2a2a2a]">
-                    <Terminal className="h-3.5 w-3.5 text-accent mr-1" />
-                    Launch Discovery Command
+                  <Button>
+                    <MessageSquare className="h-4 w-4" />
+                    Go to chat
                   </Button>
                 </Link>
               }
             />
           ) : (
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#080808] overflow-hidden shadow-2xl">
-              {/* Table Header */}
-              <div className="grid grid-cols-12 border-b border-[#1f1f1f] bg-[#0d0d0d] px-5 py-3 text-xs font-mono font-bold text-[#888888]">
-                <div className="col-span-5">COMPANY &amp; HIRING SIGNAL</div>
-                <div className="col-span-3">COGNEE MATCH SCORE</div>
-                <div className="col-span-2">DECISION MAKERS</div>
-                <div className="col-span-2 text-right">COGNEE FEEDBACK</div>
-              </div>
+            <div className="space-y-3">
+              {companies.map((company) => {
+                const isOpen = expanded[company.id];
+                const hasContacts = company.contacts?.length > 0;
 
-              <div className="divide-y divide-[#1f1f1f]">
-                {companies.map((company) => {
-                  const isOpen = expanded[company.id];
-                  const hasContacts = company.contacts?.length > 0;
+                return (
+                  <article
+                    key={company.id}
+                    className="rounded-xl border border-border bg-bg-elevated overflow-hidden transition-colors hover:border-border-strong"
+                  >
+                    <div className="flex items-start gap-4 p-5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          hasContacts &&
+                          setExpanded((prev) => ({
+                            ...prev,
+                            [company.id]: !prev[company.id],
+                          }))
+                        }
+                        className={`mt-1 shrink-0 text-text-secondary ${hasContacts ? "hover:text-white" : "invisible"}`}
+                        aria-expanded={isOpen}
+                      >
+                        {isOpen ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
 
-                  return (
-                    <article key={company.id} className="transition-colors hover:bg-[#0c0c0c]">
-                      <div className="grid grid-cols-12 items-center px-5 py-4 gap-4">
-                        {/* Company & Domain */}
-                        <div className="col-span-5 flex items-start gap-3 min-w-0">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              hasContacts &&
-                              setExpanded((prev) => ({
-                                ...prev,
-                                [company.id]: !prev[company.id],
-                              }))
-                            }
-                            className={`mt-1 shrink-0 text-[#888888] ${hasContacts ? "hover:text-white" : "invisible"}`}
-                            aria-expanded={isOpen}
-                            aria-label={isOpen ? "Collapse decision makers" : "Expand decision makers"}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-medium text-white">
+                            {company.name}
+                          </h3>
+                          <a
+                            href={`https://${company.domain}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-white"
                           >
-                            {isOpen ? (
-                              <ChevronDown className="h-4 w-4 text-accent" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
-                          </button>
-
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-white truncate">{company.name}</span>
-                              <a
-                                href={`https://${company.domain}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs font-mono text-[#888888] hover:text-accent transition-colors"
-                              >
-                                {company.domain}
-                                <ExternalLink className="h-3 w-3" aria-hidden />
-                              </a>
-                            </div>
-                            {company.description && (
-                              <p className="mt-1 text-xs text-[#888888] line-clamp-1 font-mono text-pretty">
-                                {company.description}
-                              </p>
-                            )}
-                          </div>
+                            {company.domain}
+                            <ExternalLink className="h-3 w-3" aria-hidden />
+                          </a>
+                          <Badge variant="outline">{company.matchScore}% match</Badge>
                         </div>
-
-                        {/* Cognee Match Score */}
-                        <div className="col-span-3 flex items-center gap-2">
-                          <Badge variant={scoreVariant(company.matchScore)}>
-                            {company.matchScore}% FIT
-                          </Badge>
-                          <span className="text-[11px] font-mono text-[#888888] hidden md:inline">NEURAL GRAPH</span>
-                        </div>
-
-                        {/* Contacts Count */}
-                        <div className="col-span-2 font-mono text-xs">
-                          {hasContacts ? (
-                            <span className="text-white font-medium flex items-center gap-1.5">
-                              <Database className="h-3.5 w-3.5 text-accent" />
-                              {company.contacts.length} Enriched
-                            </span>
-                          ) : (
-                            <span className="text-[#888888]">Pending Crawl</span>
-                          )}
-                        </div>
-
-                        {/* Cognee Feedback Loop Buttons */}
-                        <div className="col-span-2 flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => sendFeedback(company.id, "good")}
-                            title="Good fit (Instructs Cognee to prioritize similar tech stacks)"
-                            className={`flex h-8 px-2.5 items-center gap-1.5 rounded text-xs font-mono transition-all duration-150 border ${
-                              feedbackSent[company.id] === "good"
-                                ? "bg-[#10b981]/20 border-[#10b981] text-[#10b981] font-bold"
-                                : "border-[#1f1f1f] bg-[#111111] text-[#888888] hover:border-[#2a2a2a] hover:text-white"
-                            }`}
-                          >
-                            <ThumbsUp className="h-3.5 w-3.5" />
-                            <span className="hidden lg:inline">Good Fit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => sendFeedback(company.id, "bad")}
-                            title="Not a fit (Instructs Cognee to filter out similar companies)"
-                            className={`flex h-8 px-2.5 items-center gap-1.5 rounded text-xs font-mono transition-all duration-150 border ${
-                              feedbackSent[company.id] === "bad"
-                                ? "bg-[#ef4444]/20 border-[#ef4444] text-[#ef4444] font-bold"
-                                : "border-[#1f1f1f] bg-[#111111] text-[#888888] hover:border-[#2a2a2a] hover:text-white"
-                            }`}
-                          >
-                            <ThumbsDown className="h-3.5 w-3.5" />
-                            <span className="hidden lg:inline">Exclude</span>
-                          </button>
-                        </div>
+                        {company.description && (
+                          <p className="mt-1 text-sm text-text-secondary line-clamp-2 text-pretty">
+                            {company.description}
+                          </p>
+                        )}
+                        <p className="mt-2 text-xs text-text-secondary">
+                          {hasContacts
+                            ? `${company.contacts.length} contacts found`
+                            : "Contacts pending"}
+                        </p>
                       </div>
 
-                      {/* Expandable Enriched Decision Makers Drawer */}
-                      {isOpen && hasContacts && (
-                        <div className="border-t border-[#1f1f1f] bg-[#0a0a0a] px-5 py-4 pl-14 animate-fade-in">
-                          <div className="text-xs font-mono text-[#888888] uppercase tracking-wider mb-3 flex items-center justify-between">
-                            <span>VERIFIED DECISION MAKERS ({company.contacts.length}):</span>
-                            <span className="text-[#10b981]">APOLLO.IO + FIRECRAWL EXTRACTED</span>
-                          </div>
-                          <ul className="space-y-2.5">
-                            {company.contacts.map((contact) => (
-                              <li
-                                key={contact.id}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between rounded border border-[#1f1f1f] bg-[#111111] p-3 font-mono text-xs gap-2"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="h-7 w-7 rounded bg-[#1f1f1f] flex items-center justify-center text-white font-bold">
-                                    {contact.name[0]}
-                                  </div>
-                                  <div>
-                                    <span className="font-semibold text-white">{contact.name}</span>
-                                    {contact.title && (
-                                      <span className="text-[#888888]"> — {contact.title}</span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-4 text-xs">
-                                  {contact.email && (
-                                    <span className="inline-flex items-center gap-1.5 text-accent">
-                                      <Mail className="h-3.5 w-3.5" aria-hidden />
-                                      {contact.email}
-                                    </span>
-                                  )}
-                                  <Badge variant="primary">{contact.confidence}% Verified</Badge>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
+                      <div className="flex shrink-0 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => sendFeedback(company.id, "good")}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                            feedbackSent[company.id] === "good"
+                              ? "border-white bg-white text-[#050505]"
+                              : "border-border text-text-secondary hover:text-white"
+                          }`}
+                          aria-label="Good match"
+                        >
+                          <ThumbsUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => sendFeedback(company.id, "bad")}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                            feedbackSent[company.id] === "bad"
+                              ? "border-white bg-bg-surface text-white"
+                              : "border-border text-text-secondary hover:text-white"
+                          }`}
+                          aria-label="Not a fit"
+                        >
+                          <ThumbsDown className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {isOpen && hasContacts && (
+                      <div className="border-t border-border bg-bg-base px-5 py-4 pl-14">
+                        <p className="mb-3 text-xs text-text-secondary">
+                          Decision-makers
+                        </p>
+                        <ul className="space-y-2">
+                          {company.contacts.map((contact) => (
+                            <li
+                              key={contact.id}
+                              className="flex flex-col gap-1 rounded-lg border border-border bg-bg-elevated p-3 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <div>
+                                <span className="text-sm text-white">{contact.name}</span>
+                                {contact.title && (
+                                  <span className="text-sm text-text-secondary">
+                                    {" "}
+                                    · {contact.title}
+                                  </span>
+                                )}
+                              </div>
+                              {contact.email && (
+                                <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary">
+                                  <Mail className="h-3.5 w-3.5" aria-hidden />
+                                  {contact.email}
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>

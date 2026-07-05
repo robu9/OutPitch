@@ -10,18 +10,16 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
-  Terminal,
-  Cpu,
 } from "lucide-react";
 import { useState } from "react";
 import { Logo } from "@/components/logo";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/chat", label: "Workstation", icon: MessageSquare, shortcut: "⌘1" },
-  { href: "/companies", label: "Pipeline", icon: Building2, shortcut: "⌘2" },
-  { href: "/outreach", label: "Telemetry", icon: Mail, shortcut: "⌘3" },
-  { href: "/settings", label: "Matrix", icon: Settings, shortcut: "⌘4" },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/companies", label: "Companies", icon: Building2 },
+  { href: "/outreach", label: "Outreach", icon: Mail },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function AppShell({
@@ -35,24 +33,23 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground selection:bg-accent selection:text-accent-foreground">
+    <div className="flex min-h-screen bg-bg-base text-foreground">
       <aside
-        className={`sticky top-0 flex h-screen flex-col border-r border-[#1f1f1f] bg-[#0b0b0b] transition-[width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={cn(
+          "sticky top-0 flex h-screen flex-col border-r border-border bg-bg-elevated transition-[width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
           collapsed ? "w-[60px]" : "w-[240px]"
-        }`}
+        )}
       >
-        {/* Sidebar Header */}
         <div
-          className={`flex h-14 items-center border-b border-[#1f1f1f] ${
+          className={cn(
+            "flex h-14 items-center border-b border-border",
             collapsed ? "justify-center px-2" : "justify-between px-4"
-          }`}
+          )}
         >
           {!collapsed ? (
-            <div className="flex items-center gap-2">
-              <Logo size="sm" href="/chat" />
-            </div>
+            <Logo size="sm" href="/chat" />
           ) : (
-            <Link href="/chat" aria-label="Outpitch workstation">
+            <Link href="/chat" aria-label="Outpitch">
               <Logo size="sm" showWordmark={false} href={null} />
             </Link>
           )}
@@ -60,8 +57,8 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setCollapsed(true)}
-              className="flex h-7 w-7 items-center justify-center rounded text-[#888888] transition-colors hover:bg-[#161616] hover:text-white"
-              aria-label="Collapse workstation sidebar"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-hover hover:text-white"
+              aria-label="Collapse sidebar"
             >
               <PanelLeftClose className="h-4 w-4" aria-hidden />
             </button>
@@ -72,55 +69,32 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded text-[#888888] transition-colors hover:bg-[#161616] hover:text-white"
-            aria-label="Expand workstation sidebar"
+            className="mx-auto mt-3 flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-bg-hover hover:text-white"
+            aria-label="Expand sidebar"
           >
             <PanelLeft className="h-4 w-4" aria-hidden />
           </button>
         )}
 
-        {/* System Status Indicator */}
-        {!collapsed && (
-          <div className="mx-3 mt-3 rounded border border-[#1f1f1f] bg-[#080808] p-2.5 text-[11px] font-mono">
-            <div className="flex items-center justify-between text-[#888888] mb-1">
-              <span>COGNEE ENGINE</span>
-              <span className="text-[#10b981] font-bold">ONLINE</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-white">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-              <span>MEMORY COMPOUNDING</span>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation Links */}
-        <nav className="p-3" aria-label="Workstation navigation">
-          {!collapsed && (
-            <div className="mb-2 px-2 text-[10px] font-mono uppercase tracking-widest text-[#888888]">
-              NAVIGATION COMMANDS
-            </div>
-          )}
+        <nav className="p-3" aria-label="App navigation">
           <ul className="space-y-1">
-            {navItems.map(({ href, label, icon: Icon, shortcut }) => {
+            {navItems.map(({ href, label, icon: Icon }) => {
               const active = pathname.startsWith(href);
               return (
                 <li key={href}>
                   <Link
                     href={href}
                     title={collapsed ? label : undefined}
-                    className={`flex items-center justify-between rounded px-3 py-2.5 text-xs font-mono transition-all duration-150 ${
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
                       active
-                        ? "bg-surface-hover text-white border border-accent/40 font-bold"
-                        : "text-muted-foreground hover:bg-surface hover:text-white border border-transparent"
-                    } ${collapsed ? "justify-center px-2" : ""}`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className={`h-4 w-4 shrink-0 ${active ? "text-accent" : ""}`} aria-hidden />
-                      {!collapsed && <span>{label.toUpperCase()}</span>}
-                    </div>
-                    {!collapsed && (
-                      <span className="text-[10px] text-[#888888] font-mono">{shortcut}</span>
+                        ? "bg-bg-surface text-white"
+                        : "text-text-secondary hover:bg-bg-hover hover:text-white",
+                      collapsed && "justify-center px-2"
                     )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                    {!collapsed && <span>{label}</span>}
                   </Link>
                 </li>
               );
@@ -128,34 +102,25 @@ export function AppShell({
           </ul>
         </nav>
 
-        {/* Extra sidebar content (e.g. chat history), rendered below nav */}
         {sidebar && !collapsed ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-[#1f1f1f]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border">
             {sidebar}
           </div>
         ) : (
           <div className="flex-1" />
         )}
 
-        {/* Sidebar Footer */}
         <div
-          className={`flex items-center justify-between border-t border-[#1f1f1f] bg-[#080808] p-3 ${
-            collapsed ? "flex-col gap-3" : ""
-          }`}
-        >
-          {!collapsed && (
-            <div className="flex items-center gap-2 text-[11px] font-mono text-[#888888]">
-              <Cpu className="h-3.5 w-3.5 text-accent" />
-              <span>v2.4 // GEMINI 3</span>
-            </div>
+          className={cn(
+            "flex items-center border-t border-border p-3",
+            collapsed ? "justify-center" : "justify-between"
           )}
-          <div className={collapsed ? "" : "ml-auto"}>
-            <UserButton afterSignOutUrl="/" />
-          </div>
+        >
+          <UserButton afterSignOutUrl="/" />
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col bg-[#050505]">{children}</main>
+      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
     </div>
   );
 }

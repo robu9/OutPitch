@@ -1,25 +1,36 @@
-import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function EmptyState({
   icon: Icon,
   title,
   description,
   action,
+  className,
 }: {
-  icon: LucideIcon;
+  icon?: React.ComponentType<{ className?: string }>;
   title: string;
-  description: string;
+  description?: string;
   action?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[#1f1f1f] bg-[#080808] py-20 px-4 text-center">
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-md border border-[#2a2a2a] bg-[#111111] shadow-inner">
-        <Icon className="h-5 w-5 text-[#888888]" aria-hidden />
-      </div>
-      <h2 className="text-base font-semibold text-white tracking-tight">{title}</h2>
-      <p className="mt-2 max-w-md text-sm leading-relaxed text-[#888888] text-pretty">
-        {description}
-      </p>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-2xl border border-border bg-bg-elevated px-8 py-16 text-center",
+        className
+      )}
+    >
+      {Icon && (
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-bg-surface">
+          <Icon className="h-5 w-5 text-text-secondary" />
+        </div>
+      )}
+      <h3 className="text-base font-medium text-white">{title}</h3>
+      {description && (
+        <p className="mt-2 max-w-sm text-sm text-text-secondary text-pretty">
+          {description}
+        </p>
+      )}
       {action && <div className="mt-6">{action}</div>}
     </div>
   );

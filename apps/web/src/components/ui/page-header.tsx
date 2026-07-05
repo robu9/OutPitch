@@ -1,23 +1,27 @@
+import { cn } from "@/lib/utils";
+
 export function PageHeader({
   title,
   description,
   action,
-  meta,
+  className,
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
-  meta?: string;
+  className?: string;
 }) {
   return (
-    <header className="flex flex-col gap-4 border-b border-border bg-background-secondary px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <header
+      className={cn(
+        "flex flex-col gap-4 border-b border-border bg-bg-base px-6 py-5 sm:flex-row sm:items-center sm:justify-between",
+        className
+      )}
+    >
       <div>
-        {meta && (
-          <div className="mb-1 text-xs text-muted-foreground">{meta}</div>
-        )}
-        <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">{title}</h1>
+        <h1 className="text-lg font-medium tracking-tight text-white">{title}</h1>
         {description && (
-          <p className="mt-1 text-sm text-muted-foreground text-pretty max-w-2xl">{description}</p>
+          <p className="mt-1 text-sm text-text-secondary">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
